@@ -16,7 +16,7 @@
 
 </head>
 
-<body class="bg-light text-dark d-flex flex-column justify-content-center min-vh-100 p-3">
+<body class="bg-light text-dark min-vh-100 p-3">
 
     <header class="w-100 text-center mb-4">
         @if (Route::has('login'))
