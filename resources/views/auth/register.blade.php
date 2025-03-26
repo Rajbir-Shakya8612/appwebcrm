@@ -44,6 +44,18 @@
             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
         </div>
 
+        <div class="mt-4">
+            <label for="role_id" class="form-label">Role</label>
+            <select class="form-select @error('role_id') is-invalid @enderror" id="role_id" name="role_id" required>
+                <option value="">Select a role</option>
+                @foreach (\App\Models\Role::all() as $role)
+                    <option value="{{ $role->id }}" {{ old('role_id') == $role->id ? 'selected' : '' }}>
+                        {{ $role->name }}
+                    </option>
+                @endforeach
+            </select>
+            <div class="invalid-feedback">Please select your role.</div>
+        </div>
         <div class="flex items-center justify-end mt-4">
 
 
