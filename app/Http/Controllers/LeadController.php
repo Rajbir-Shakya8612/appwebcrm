@@ -4,14 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\Lead;
 use App\Models\User;
+use App\Models\LeadStatus;
 use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Carbon\Carbon;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class LeadController extends Controller
 {
+    use AuthorizesRequests;
+
     protected $whatsappService;
 
     public function __construct(WhatsAppService $whatsappService)
@@ -24,17 +28,13 @@ class LeadController extends Controller
      */
     public function index()
     {
-        $leads = Lead::where('user_id', Auth::id())
-            ->with(['activities' => function ($query) {
-                $query->latest()->limit(1);
-            }])
-            ->latest()
-            ->get();
-
-        return response()->json([
-            'success' => true,
-            'leads' => $leads
-        ]);
+        $user = Auth::user();
+        $leadStatuses = LeadStatus::with(['leads' => function($query) use ($user) {
+            $query->where('user_id', $user->id)
+                ->orderBy('created_at', 'desc');
+        }])->get();
+            
+        return view('dashboard.salesperson.leads.index', compact('leadStatuses'));
     }
 
     /**
@@ -42,21 +42,28 @@ class LeadController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $request->validate([
             'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
             'phone' => 'required|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'company' => 'nullable|string|max:255',
-            'source' => 'required|string|in:website,referral,social,other',
-            'status' => 'required|string|in:new,contacted,qualified,proposal,negotiation,converted,lost',
-            'notes' => 'nullable|string',
-            'next_follow_up' => 'nullable|date',
-            'expected_value' => 'nullable|numeric|min:0'
+            'company' => 'required|string|max:255',
+            'description' => 'required|string',
+            'source' => 'required|string|max:255',
+            'expected_value' => 'required|numeric|min:0',
+            'notes' => 'nullable|string'
         ]);
 
         $lead = Lead::create([
             'user_id' => Auth::id(),
-            ...$validated
+            'status_id' => LeadStatus::where('slug', 'new')->first()->id,
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'company' => $request->company,
+            'description' => $request->description,
+            'source' => $request->source,
+            'expected_value' => $request->expected_value,
+            'notes' => $request->notes
         ]);
 
         // Create initial activity
@@ -77,6 +84,7 @@ class LeadController extends Controller
 
         return response()->json([
             'success' => true,
+            'message' => 'Lead created successfully',
             'lead' => $lead
         ]);
     }
@@ -86,11 +94,8 @@ class LeadController extends Controller
      */
     public function show(Lead $lead)
     {
-        Gate::authorize('view', $lead);
-
-        $lead->load('activities');
-
-        return view('dashboard.salesperson.leads.show', compact('lead'));
+        $this->authorize('view', $lead);
+        return response()->json($lead);
     }
 
     /**
@@ -98,21 +103,20 @@ class LeadController extends Controller
      */
     public function update(Request $request, Lead $lead)
     {
-        Gate::authorize('update', $lead);
-
-        $validated = $request->validate([
+        $this->authorize('update', $lead);
+        
+        $request->validate([
             'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
             'phone' => 'required|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'company' => 'nullable|string|max:255',
-            'source' => 'required|string|in:website,referral,social,other',
-            'status' => 'required|string|in:new,contacted,qualified,proposal,negotiation,converted,lost',
-            'notes' => 'nullable|string',
-            'next_follow_up' => 'nullable|date',
-            'expected_value' => 'nullable|numeric|min:0'
+            'company' => 'required|string|max:255',
+            'description' => 'required|string',
+            'source' => 'required|string|max:255',
+            'expected_value' => 'required|numeric|min:0',
+            'notes' => 'nullable|string'
         ]);
 
-        $lead->update($validated);
+        $lead->update($request->all());
 
         // Create activity for the update
         $lead->createActivity(
@@ -128,6 +132,7 @@ class LeadController extends Controller
 
         return response()->json([
             'success' => true,
+            'message' => 'Lead updated successfully',
             'lead' => $lead
         ]);
     }
@@ -137,8 +142,8 @@ class LeadController extends Controller
      */
     public function destroy(Lead $lead)
     {
-        Gate::authorize('delete', $lead);
-
+        $this->authorize('delete', $lead);
+        
         $lead->delete();
 
         return response()->json([
@@ -152,28 +157,26 @@ class LeadController extends Controller
      */
     public function updateStatus(Request $request, Lead $lead)
     {
-        Gate::authorize('update', $lead);
-
-        $validated = $request->validate([
-            'status' => 'required|string|in:new,contacted,qualified,proposal,negotiation,converted,lost'
+        $this->authorize('update', $lead);
+        
+        $request->validate([
+            'status_id' => 'required|exists:lead_statuses,id'
         ]);
 
-        if ($lead->updateStatus($validated['status'], Auth::user())) {
-            // If status changed to converted, send notification
-            if ($validated['status'] === 'converted') {
-                $this->whatsappService->sendLeadConversionNotification($lead->user, $lead);
-            }
+        $lead->update([
+            'status_id' => $request->status_id
+        ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Lead status updated successfully'
-            ]);
+        // If status changed to converted, send notification
+        if ($request->status_id === 'converted') {
+            $this->whatsappService->sendLeadConversionNotification($lead->user, $lead);
         }
 
         return response()->json([
-            'success' => false,
-            'message' => 'Failed to update lead status'
-        ], 500);
+            'success' => true,
+            'message' => 'Lead status updated successfully',
+            'lead' => $lead
+        ]);
     }
 
     /**
@@ -208,17 +211,13 @@ class LeadController extends Controller
     /**
      * Get leads by status.
      */
-    public function getLeadsByStatus(Request $request)
+    public function getLeadsByStatus(LeadStatus $status)
     {
-        $validated = $request->validate([
-            'status' => 'required|string|in:new,contacted,qualified,proposal,negotiation,converted,lost'
-        ]);
-
-        $leads = Lead::where('user_id', Auth::id())
-            ->where('status', $validated['status'])
-            ->latest()
+        $leads = $status->leads()
+            ->where('user_id', Auth::id())
+            ->orderBy('created_at', 'desc')
             ->get();
-
+            
         return response()->json([
             'success' => true,
             'leads' => $leads
@@ -230,24 +229,37 @@ class LeadController extends Controller
      */
     public function getLeadStats()
     {
+        $user = Auth::user();
         $stats = [
-            'total' => Lead::where('user_id', Auth::id())->count(),
-            'converted' => Lead::where('user_id', Auth::id())->where('status', 'converted')->count(),
-            'lost' => Lead::where('user_id', Auth::id())->where('status', 'lost')->count(),
-            'pipeline' => Lead::where('user_id', Auth::id())
-                ->whereNotIn('status', ['converted', 'lost'])
-                ->count(),
-            'by_status' => Lead::where('user_id', Auth::id())
-                ->selectRaw('status, count(*) as count')
-                ->groupBy('status')
+            'total_leads' => Lead::where('user_id', $user->id)->count(),
+            'leads_by_status' => Lead::where('user_id', $user->id)
+                ->selectRaw('status_id, count(*) as count')
+                ->groupBy('status_id')
                 ->get()
-                ->pluck('count', 'status')
-                ->toArray()
+                ->mapWithKeys(function($item) {
+                    return [$item->status_id => $item->count];
+                }),
+            'total_value' => Lead::where('user_id', $user->id)->sum('expected_value'),
+            'conversion_rate' => $this->calculateConversionRate($user)
         ];
-
+        
         return response()->json([
             'success' => true,
             'stats' => $stats
         ]);
+    }
+
+    private function calculateConversionRate($user)
+    {
+        $totalLeads = Lead::where('user_id', $user->id)->count();
+        if ($totalLeads === 0) return 0;
+        
+        $wonLeads = Lead::where('user_id', $user->id)
+            ->whereHas('status', function($query) {
+                $query->where('slug', 'won');
+            })
+            ->count();
+            
+        return round(($wonLeads / $totalLeads) * 100, 2);
     }
 }

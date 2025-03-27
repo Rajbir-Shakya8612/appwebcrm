@@ -42,7 +42,7 @@ class CheckPlanDeadlines extends Command
                     $endDate = Carbon::create($plan->year, 1, 1)->endOfYear();
                     break;
                 default:
-                    continue;
+                    continue 2;
             }
             
             // Check if plan is ending in 3 days

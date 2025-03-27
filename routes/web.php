@@ -163,9 +163,13 @@ Route::middleware(['auth', 'salesperson'])->prefix('admin')->group(function () {
     Route::get('/attendance/calendar-events', [AttendanceController::class, 'calendarEvents']);
 
     // Leads
-    Route::post('/leads', [LeadController::class, 'store']);
-    Route::get('/leads/{lead}', [LeadController::class, 'show']);
-    Route::put('/leads/{lead}', [LeadController::class, 'update']);
+    Route::post('/leads', [LeadController::class, 'store'])->name('salesperson.leads.store');
+    Route::get('/leads/{lead}', [LeadController::class, 'show'])->name('salesperson.leads.show');
+    Route::put('/leads/{lead}', [LeadController::class, 'update'])->name('salesperson.leads.update');
+    Route::delete('/leads/{lead}', [LeadController::class, 'destroy'])->name('salesperson.leads.destroy');
+    Route::put('/leads/{lead}/status', [LeadController::class, 'updateStatus'])->name('salesperson.leads.status');
+    Route::get('/leads/status/{status}', [LeadController::class, 'getLeadsByStatus'])->name('salesperson.leads.by-status');
+    Route::get('/leads/stats', [LeadController::class, 'getLeadStats'])->name('salesperson.leads.stats');
 
     // Sales
     Route::post('/sales', [SaleController::class, 'store']);

@@ -13,15 +13,15 @@ class Lead extends Model
 
     protected $fillable = [
         'user_id',
+        'status_id',
         'name',
-        'phone',
         'email',
+        'phone',
         'company',
+        'description',
         'source',
-        'status',
-        'notes',
-        'next_follow_up',
-        'expected_value'
+        'expected_value',
+        'notes'
     ];
 
     protected $casts = [
@@ -30,11 +30,19 @@ class Lead extends Model
     ];
 
     /**
-     * Get the user who owns the lead.
+     * Get the user that owns the lead.
      */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the status of the lead.
+     */
+    public function status(): BelongsTo
+    {
+        return $this->belongsTo(LeadStatus::class, 'status_id');
     }
 
     /**
@@ -79,20 +87,11 @@ class Lead extends Model
     }
 
     /**
-     * Get the status color for the lead.
+     * Get the lead's color based on status.
      */
     public function getStatusColorAttribute(): string
     {
-        return match($this->status) {
-            'new' => 'primary',
-            'contacted' => 'info',
-            'qualified' => 'success',
-            'proposal' => 'warning',
-            'negotiation' => 'warning',
-            'converted' => 'success',
-            'lost' => 'danger',
-            default => 'secondary'
-        };
+        return $this->status->color ?? '#3B82F6';
     }
 
     /**

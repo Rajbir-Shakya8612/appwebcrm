@@ -47,7 +47,7 @@ class UpdatePlanAchievements extends Command
                     $endDate = $startDate->copy()->endOfYear();
                     break;
                 default:
-                    continue;
+                    continue 2;
             }
             
             // Get achievements

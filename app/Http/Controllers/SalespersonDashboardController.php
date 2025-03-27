@@ -7,89 +7,74 @@ use App\Models\Lead;
 use App\Models\Sale;
 use App\Models\Task;
 use App\Models\Attendance;
+use App\Models\Meeting;
+use App\Models\LeadStatus;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class SalespersonDashboardController extends Controller
 {
     /**
      * Display salesperson dashboard
      */
-    public function index(Request $request)
+    public function index()
     {
-        $user = $request->user();
-
-        // Today's attendance status
-        $todayAttendance = $user->attendances()
-            ->whereDate('created_at', today())
-            ->first();
-
-        // This month's leads
-        $monthlyLeads = $user->leads()
-            ->whereMonth('created_at', now()->month)
-            ->count();
-        $lastMonthLeads = $user->leads()
-            ->whereMonth('created_at', now()->subMonth())
-            ->count();
-        $leadChange = $lastMonthLeads > 0 ? (($monthlyLeads - $lastMonthLeads) / $lastMonthLeads) * 100 : 0;
-
-        // This month's sales
-        $monthlySales = $user->sales()
-            ->whereMonth('created_at', now()->month)
+        $user = Auth::user();
+        $now = Carbon::now();
+        
+        // Get total leads
+        $totalLeads = Lead::where('user_id', $user->id)->count();
+        
+        // Get monthly sales
+        $monthlySales = Sale::where('user_id', $user->id)
+            ->whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year)
             ->sum('amount');
-        $lastMonthSales = $user->sales()
-            ->whereMonth('created_at', now()->subMonth())
-            ->sum('amount');
-        $salesChange = $lastMonthSales > 0 ? (($monthlySales - $lastMonthSales) / $lastMonthSales) * 100 : 0;
-
-        // Tasks
-        $tasks = Task::where('assignee_id', $user->id)
-            ->whereIn('status', ['todo', 'in_progress'])
-            ->with('assignee')
-            ->get()
-            ->groupBy('status');
-
-        // Performance data
-        $performanceData = $this->getPerformanceData($user);
-
-        // Recent activities
-        $recentActivities = $this->getRecentActivities($user);
-
-        if ($request->wantsJson()) {
-            return response()->json([
-                'user' => $user,
-                'attendance' => $todayAttendance,
-                'monthlyLeads' => $monthlyLeads,
-                'leadChange' => round($leadChange, 1),
-                'monthlySales' => $monthlySales,
-                'salesChange' => round($salesChange, 1),
-                'tasks' => $tasks,
-                'performanceData' => $performanceData,
-                'recentActivities' => $recentActivities,
-                'targetProgress' => [
-                    'leads' => [
-                        'current' => $monthlyLeads,
-                        'target' => $user->target_leads,
-                        'percentage' => $user->target_leads > 0 ? ($monthlyLeads / $user->target_leads) * 100 : 0
-                    ],
-                    'sales' => [
-                        'current' => $monthlySales,
-                        'target' => $user->target_amount,
-                        'percentage' => $user->target_amount > 0 ? ($monthlySales / $user->target_amount) * 100 : 0
-                    ]
-                ]
-            ]);
+            
+        // Get today's meetings
+        $todayMeetings = Meeting::where('user_id', $user->id)
+            ->whereDate('meeting_date', $now)
+            ->count();
+            
+        // Calculate target achievement
+        $currentPlan = $user->getCurrentMonthPlan();
+        $targetAchievement = 0;
+        if ($currentPlan) {
+            $leadPercentage = $currentPlan->getLeadAchievementPercentage();
+            $salesPercentage = $currentPlan->getSalesAchievementPercentage();
+            $targetAchievement = round(($leadPercentage + $salesPercentage) / 2);
         }
-
-        return view('dashboard.salesperson-dashboard', compact(
-            'user',
-            'todayAttendance',
-            'monthlyLeads',
-            'leadChange',
+        
+        // Get lead statuses with their leads
+        $leadStatuses = LeadStatus::with(['leads' => function($query) use ($user) {
+            $query->where('user_id', $user->id)
+                ->orderBy('created_at', 'desc');
+        }])->get();
+        
+        // Get meetings for calendar
+        $meetings = Meeting::where('user_id', $user->id)
+            ->where('meeting_date', '>=', $now)
+            ->get()
+            ->map(function($meeting) {
+                return [
+                    'id' => $meeting->id,
+                    'title' => $meeting->title,
+                    'start' => $meeting->meeting_date->format('Y-m-d H:i:s'),
+                    'end' => $meeting->meeting_date->addHour()->format('Y-m-d H:i:s'),
+                    'description' => $meeting->description,
+                    'location' => $meeting->location,
+                    'backgroundColor' => $meeting->status === 'completed' ? '#10B981' : '#3B82F6',
+                    'borderColor' => $meeting->status === 'completed' ? '#059669' : '#2563EB'
+                ];
+            });
+            
+        return view('dashboard.salesperson.salesperson-dashboard', compact(
+            'totalLeads',
             'monthlySales',
-            'salesChange',
-            'tasks',
-            'performanceData',
-            'recentActivities'
+            'todayMeetings',
+            'targetAchievement',
+            'leadStatuses',
+            'meetings'
         ));
     }
 
