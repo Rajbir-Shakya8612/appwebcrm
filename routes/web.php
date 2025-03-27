@@ -7,14 +7,34 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\SalespersonDashboardController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use Illuminate\Support\Facades\Auth;
 
 Route::get('/', function () {
     return view('welcome');
 })->name('welcome');
 
 Route::get('/dashboard', function () {
+    if (!Auth::check()) {
+        return redirect('/login');
+    }
+
+    $user = Auth::user();
+    $user->load('role'); // Ensure role is loaded
+
+    // If user is admin, redirect to admin dashboard
+    if ($user->hasRole('admin')) {
+        return redirect()->route('admin.dashboard');
+    }
+
+    // If user is salesperson, redirect to salesperson dashboard
+    if ($user->hasRole('salesperson')) {
+        return redirect()->route('salesperson.dashboard');
+    }
+
+    // For other users, show the regular dashboard
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
+
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -22,39 +42,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__.'/auth.php';
-
-Route::middleware(['auth'])->group(function () {
-    Route::resource('roles', RoleController::class)->names([
-        'index' => 'web.roles.index',
-        'create' => 'web.roles.create',
-        'store' => 'web.roles.store',
-        'show' => 'web.roles.show',
-        'edit' => 'web.roles.edit',
-        'update' => 'web.roles.update',
-        'destroy' => 'web.roles.destroy',
-    ]);
-    Route::resource('users', UserController::class)->names([
-        'index' => 'web.users.index',
-        'create' => 'web.users.create',
-        'store' => 'web.users.store',
-        'show' => 'web.users.show',
-        'edit' => 'web.users.edit',
-        'update' => 'web.users.update',
-        'destroy' => 'web.users.destroy',
-    ]);
-    // Route::get('/admin-dashboard', [AdminDashboardController::class, 'index'])
-    //     ->name('admin.dashboard')->middleware('role:admin');
-
-    Route::get('/salesperson-dashboard', [SalespersonDashboardController::class, 'index'])
-        ->name('salesperson.dashboard')->middleware('role:salesperson');
-
-    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
-});
-
 Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     // Dashboard
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+
 
     // Dashboard Data APIs
     Route::get('/attendance/overview', [AdminDashboardController::class, 'getAttendanceOverview']);
@@ -101,4 +92,70 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/locations/{location}', [AdminDashboardController::class, 'showLocation'])->name('admin.locations.show');
     Route::put('/locations/{location}', [AdminDashboardController::class, 'updateLocation'])->name('admin.locations.update');
     Route::delete('/locations/{location}', [AdminDashboardController::class, 'deleteLocation'])->name('admin.locations.delete');
+});
+
+require __DIR__.'/auth.php';
+
+Route::middleware(['auth'])->group(function () {
+    Route::resource('roles', RoleController::class)->names([
+        'index' => 'web.roles.index',
+        'create' => 'web.roles.create',
+        'store' => 'web.roles.store',
+        'show' => 'web.roles.show',
+        'edit' => 'web.roles.edit',
+        'update' => 'web.roles.update',
+        'destroy' => 'web.roles.destroy',
+    ]);
+    Route::resource('users', UserController::class)->names([
+        'index' => 'web.users.index',
+        'create' => 'web.users.create',
+        'store' => 'web.users.store',
+        'show' => 'web.users.show',
+        'edit' => 'web.users.edit',
+        'update' => 'web.users.update',
+        'destroy' => 'web.users.destroy',
+    ]);
+
+    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+});
+
+Route::middleware(['auth', 'salesperson'])->prefix('admin')->group(function () {
+
+    Route::get('/salesperson-dashboard', [SalespersonDashboardController::class, 'index'])
+        ->name('salesperson.dashboard');
+
+    Route::get('/leads', [LeadController::class, 'index'])->name('salesperson.leads');
+    Route::get('/sales', [SaleController::class, 'index'])->name('salesperson.sales');
+    Route::get('/attendance', [AttendanceController::class, 'index'])->name('salesperson.attendance');
+    Route::get('/performance', [PerformanceController::class, 'index'])->name('salesperson.performance');
+    Route::get('/profile', [ProfileController::class, 'index'])->name('salesperson.profile');
+    Route::get('/settings', [SettingsController::class, 'index'])->name('salesperson.settings');
+
+    // Attendance
+    Route::post('/attendance/checkin', [AttendanceController::class, 'checkIn']);
+    Route::post('/attendance/checkout', [AttendanceController::class, 'checkOut']);
+    Route::get('/attendance/status', [AttendanceController::class, 'status']);
+
+    // Leads
+    Route::post('/leads', [LeadController::class, 'store']);
+    Route::get('/leads/{lead}', [LeadController::class, 'show']);
+    Route::put('/leads/{lead}', [LeadController::class, 'update']);
+
+    // Sales
+    Route::post('/sales', [SaleController::class, 'store']);
+    Route::get('/sales/{sale}', [SaleController::class, 'show']);
+    Route::put('/sales/{sale}', [SaleController::class, 'update']);
+
+    // Location updates
+    Route::post('/location/update', [LocationController::class, 'update']);
+});
+
+
+// Common routes for all authenticated users
+Route::prefix('settings')->group(function () {
+    Route::get('/', [SettingsController::class, 'index']);
+    Route::put('/profile', [SettingsController::class, 'updateProfile']);
+    Route::put('/password', [SettingsController::class, 'updatePassword']);
+    Route::put('/notifications', [SettingsController::class, 'updateNotificationPreferences']);
+    Route::put('/targets', [SettingsController::class, 'updateTargets']);
 });

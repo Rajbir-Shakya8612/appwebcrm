@@ -27,10 +27,6 @@
     <link href='https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.10/main.min.css' rel='stylesheet'>
     <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.10/main.min.js'></script>
 
-    <script>
-        const token = 'Bearer ' + localStorage.getItem('token');
-        axios.defaults.headers.common['Authorization'] = token;
-    </script>
     <!-- Custom CSS -->
     <style>
         :root {
@@ -40,9 +36,25 @@
             --secondary-bg: #f8fafc;
         }
 
+        .top-navbar {
+            position: absolute;
+            top: 0;
+            left: 20%;
+            width: 79%;
+            background-color: #fff;
+            height: var(--header-height);
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            transition: width 0.3s ease;
+            
+        }
+
+
+
         body {
             min-height: 100vh;
             background-color: var(--secondary-bg);
+            padding-top: 100px;
         }
 
         .sidebar {
@@ -57,11 +69,24 @@
             transition: all 0.3s ease-in-out;
         }
 
+        .top-navbar.full-width {
+            width: 100%;
+            /* Full width when sidebar is hidden */
+            left: 0;
+            /* Align to the left */
+        }
+
         .main-content {
             margin-left: var(--sidebar-width);
             padding: 20px;
             min-height: 100vh;
-            transition: all 0.3s ease-in-out;
+            transition: margin-left 0.3s ease;
+            /* Smooth transition for margin change */
+        }
+
+        .main-content.full-width {
+            margin-left: 0;
+            /* No margin when sidebar is hidden */
         }
 
         .top-header {
@@ -183,6 +208,18 @@
             background-color: var(--primary-color);
         }
 
+        .fade-out {
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            pointer-events: none;
+            /* Prevent interaction when faded out */
+        }
+
+        .fade-in {
+            opacity: 1;
+            transition: opacity 0.3s ease-in-out;
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -204,7 +241,7 @@
 <body>
     <div class="wrapper">
         <!-- Sidebar -->
-        <nav class="sidebar">
+        <nav class="sidebar" id="sidebar">
             <div class="p-4">
                 <div class="d-flex align-items-center mb-4">
                     <img src="{{ asset('images/logo.png') }}" alt="Logo" height="40">
@@ -270,70 +307,76 @@
         <!-- Main Content -->
         <div class="main-content">
             <!-- Top Header -->
-            <header class="top-header mb-4">
-                <button class="btn btn-link sidebar-toggler d-md-none">
-                    <i class="bi bi-list"></i>
-                </button>
+            <div class="top-navbar">
+                <header class="top-header mb-4">
+                    <button class="btn btn-link sidebar-toggler">
+                        <i class="bi bi-list"></i>
+                    </button>
 
-                <div class="flex-grow-1"></div>
+                    <div class="flex-grow-1"></div>
 
-                <div class="d-flex align-items-center">
-                    <!-- Search -->
-                    <div class="me-3">
-                        <div class="input-group">
-                            <span class="input-group-text border-0 bg-light">
-                                <i class="bi bi-search"></i>
-                            </span>
-                            <input type="text" class="form-control border-0 bg-light" placeholder="Search...">
+                    <div class="d-flex align-items-center">
+                        <!-- Search -->
+                        <div class="me-3">
+                            <div class="input-group">
+                                <span class="input-group-text border-0 bg-light">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text" class="form-control border-0 bg-light" placeholder="Search...">
+                            </div>
+                        </div>
+
+                        <!-- Notifications -->
+                        <div class="dropdown me-3">
+                            <button class="btn btn-link position-relative" type="button" id="notificationsDropdown"
+                                data-bs-toggle="dropdown">
+                                <i class="bi bi-bell text-muted"></i>
+                                <span
+                                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                    3
+                                </span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationsDropdown">
+                                <li>
+                                    <h6 class="dropdown-header">Notifications</h6>
+                                </li>
+                                <li><a class="dropdown-item" href="#">New lead assigned</a></li>
+                                <li><a class="dropdown-item" href="#">Sales target achieved</a></li>
+                                <li><a class="dropdown-item" href="#">New user registered</a></li>
+                            </ul>
+                        </div>
+
+                        <!-- Profile -->
+                        <div class="dropdown">
+                            <button class="btn btn-link d-flex align-items-center" type="button" id="profileDropdown"
+                                data-bs-toggle="dropdown">
+                                <img src="{{ auth()->user()->photo_url ?? asset('images/default-avatar.png') }}"
+                                    alt="Profile" class="rounded-circle me-2" width="32" height="32">
+                                <span class="d-none d-md-block text-dark">{{ auth()->user()->name }}</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+                                <li><a class="dropdown-item" href="#">Profile</a></li>
+                                <li><a class="dropdown-item" href="{{ route('admin.settings') }}">Settings</a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li>
+                                    <a class="dropdown-item text-danger" href="#"
+                                        onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                                        Logout
+                                    </a>
+                                </li>
+                            </ul>
                         </div>
                     </div>
+                </header>
+            </div>
 
-                    <!-- Notifications -->
-                    <div class="dropdown me-3">
-                        <button class="btn btn-link position-relative" type="button" id="notificationsDropdown"
-                            data-bs-toggle="dropdown">
-                            <i class="bi bi-bell text-muted"></i>
-                            <span
-                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                3
-                            </span>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationsDropdown">
-                            <li>
-                                <h6 class="dropdown-header">Notifications</h6>
-                            </li>
-                            <li><a class="dropdown-item" href="#">New lead assigned</a></li>
-                            <li><a class="dropdown-item" href="#">Sales target achieved</a></li>
-                            <li><a class="dropdown-item" href="#">New user registered</a></li>
-                        </ul>
-                    </div>
+            <!-- Dynamic Content Section -->
+            <div class="container">
+                @yield('content')
+            </div>
 
-                    <!-- Profile -->
-                    <div class="dropdown">
-                        <button class="btn btn-link d-flex align-items-center" type="button" id="profileDropdown"
-                            data-bs-toggle="dropdown">
-                            <img src="{{ auth()->user()->photo_url ?? asset('images/default-avatar.png') }}"
-                                alt="Profile" class="rounded-circle me-2" width="32" height="32">
-                            <span class="d-none d-md-block text-dark">{{ auth()->user()->name }}</span>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
-                            <li><a class="dropdown-item" href="#">Profile</a></li>
-                            <li><a class="dropdown-item" href="{{ route('admin.settings') }}">Settings</a></li>
-                            <li>
-                                <hr class="dropdown-divider">
-                            </li>
-                            <li>
-                                <a class="dropdown-item text-danger" href="#"
-                                    onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                                    Logout
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </header>
-
-            @yield('content')
         </div>
     </div>
 
@@ -352,38 +395,58 @@
 
     <!-- Custom JS -->
     <script>
+        // document.addEventListener('DOMContentLoaded', function() {
+        //     // Sidebar Toggle
+        //   
+        //     // API Token Check
+        //     const token = localStorage.getItem('token');
+        //     if (!token) {
+        //         window.location.href = '/login';
+        //         return;
+        //     }
+
+        //     // Add token to all API requests
+        //     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        //     axios.defaults.headers.common['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]')
+        //         .content;
+
+        //     // Handle API Errors
+        //     axios.interceptors.response.use(
+        //         response => response,
+        //         error => {
+        //             if (error.response?.status === 401) {
+        //                 localStorage.removeItem('token');
+        //                 window.location.href = '/login';
+        //             }
+        //             return Promise.reject(error);
+        //         }
+        //     );
+        // });
+
         document.addEventListener('DOMContentLoaded', function() {
             // Sidebar Toggle
+
             const sidebarToggler = document.querySelector('.sidebar-toggler');
+            const sidebar = document.getElementById('sidebar');
             const wrapper = document.querySelector('.wrapper');
+            const topNavbar = document.querySelector('.top-navbar');
+            const mainContent = document.querySelector('.main-content');
 
             sidebarToggler?.addEventListener('click', function() {
-                wrapper.classList.toggle('sidebar-open');
-            });
-
-            // API Token Check
-            const token = localStorage.getItem('token');
-            if (!token) {
-                window.location.href = '/login';
-                return;
-            }
-
-            // Add token to all API requests
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            axios.defaults.headers.common['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]')
-                .content;
-
-            // Handle API Errors
-            axios.interceptors.response.use(
-                response => response,
-                error => {
-                    if (error.response?.status === 401) {
-                        localStorage.removeItem('token');
-                        window.location.href = '/login';
-                    }
-                    return Promise.reject(error);
+                if (sidebar.classList.contains('fade-out')) {
+                    sidebar.classList.remove('fade-out');
+                    sidebar.classList.add('fade-in');
+                    wrapper.classList.remove('sidebar-open');
+                    topNavbar.classList.remove('full-width'); // Reset navbar width
+                    mainContent.classList.remove('full-width'); // Reset main content margin
+                } else {
+                    sidebar.classList.remove('fade-in');
+                    sidebar.classList.add('fade-out');
+                    wrapper.classList.add('sidebar-open');
+                    topNavbar.classList.add('full-width'); // Set navbar to full width
+                    mainContent.classList.add('full-width'); // Adjust main content margin
                 }
-            );
+            });
         });
 
         // Show loading spinner

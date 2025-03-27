@@ -25,21 +25,35 @@ class AuthenticatedSessionController extends Controller
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
-
         $request->session()->regenerate();
 
-        $user = Auth::user()->load('role');
+        $user = Auth::user();
+        $token = $user->createToken('api-token')->plainTextToken;
 
-        if (Auth::user()->hasRole('admin')) {
-            return redirect()->route('admin.dashboard');
-        } else {
-            return redirect()->route('salesperson.dashboard');
+        // Load the role relationship
+        $user->load('role');
+
+        // Agar request API se hai toh JSON response bheje
+        if ($request->expectsJson()) {
+            return response()->json([
+                'token' => $token,
+                'role' => $user->role->slug ?? 'user',
+                'redirect' => $this->getRedirectUrl($user)
+            ]);
         }
 
-
-
+        // Normal website redirect
+        return redirect($this->getRedirectUrl($user))->with('token', $token);
     }
-
+    private function getRedirectUrl($user)
+    {
+        if ($user->hasRole('admin')) {
+            return route('admin.dashboard');
+        } elseif ($user->hasRole('salesperson')) {
+            return route('salesperson.dashboard');
+        }
+        return route('dashboard');
+    }
     /**
      * Destroy an authenticated session.
      */

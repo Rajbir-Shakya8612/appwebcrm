@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
-class AdminMiddleware
+class SalespersonMiddleware
 {
     /**
      * Handle an incoming request.
@@ -24,16 +24,16 @@ class AdminMiddleware
         }
 
         // Agar user ka role admin hai
-        if ($user->role && $user->role->slug === 'admin') {
+        if ($user->role && $user->role->slug === 'salesperson') {
             // Admin ko sirf /dashboard se /admin/dashboard pe redirect karo
             if ($request->is('dashboard')) {
-                return redirect()->route('admin.dashboard');
+                return redirect()->route('salesperson.dashboard');
             }
             return $next($request);
         }
 
         // Agar non-admin user admin panel access kar raha hai, use /dashboard pe redirect karo
-        if ($request->is('admin/*')) {
+        if ($request->is('salesperson/*')) {
             return redirect('/dashboard');
         }
 
