@@ -67,6 +67,7 @@ class User extends Authenticatable
         ];
     }
 
+    protected $with = ['role'];
     /**
      * Get the user's photo URL.
      */
@@ -117,53 +118,54 @@ class User extends Authenticatable
         return $this->status;
     }
 
-    // /**
-    //  * Get user's attendances
-    //  */
-    // public function attendances(): HasMany
-    // {
-    //     return $this->hasMany(Attendance::class);
-    // }
+    /**
+     * Get user's attendances
+     */
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(Attendance::class);
+    }
 
-    // /**
-    //  * Get user's leads
-    //  */
-    // public function leads(): HasMany
-    // {
-    //     return $this->hasMany(Lead::class);
-    // }
+    /**
+     * Get user's leads
+     */
+    public function leads(): HasMany
+    {
+        return $this->hasMany(Lead::class);
+    }
 
-    // /**
-    //  * Get user's sales
-    //  */
-    // public function sales(): HasMany
-    // {
-    //     return $this->hasMany(Sale::class);
-    // }
+    /**
+     * Get user's sales
+     */
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class);
+    }
 
-    // /**
-    //  * Get user's location tracks
-    //  */
-    // public function locationTracks(): HasMany
-    // {
-    //     return $this->hasMany(LocationTrack::class);
-    // }
+    /**
+     * Get user's location tracks
+     */
+    public function locationTracks(): HasMany
+    {
+        return $this->hasMany(LocationTrack::class);
+    }
 
-    // /**
-    //  * Get user's tasks
-    //  */
-    // public function tasks(): HasMany
-    // {
-    //     return $this->hasMany(Task::class);
-    // }
+    /**
+     * Get user's tasks
+     */
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(Task::class);
+    }
 
-    public function role(): BelongsTo
+    public function role()
     {
         return $this->belongsTo(Role::class);
     }
 
+
     public function hasRole($role): bool
     {
-        return $this->role->slug === $role;
+        return $this->role && $this->role->slug === $role;
     }
 }
