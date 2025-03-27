@@ -4,7 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Lead extends Model
 {
@@ -15,27 +16,23 @@ class Lead extends Model
         'name',
         'phone',
         'email',
-        'address',
-        'pincode',
+        'company',
+        'source',
         'status',
         'notes',
-        'expected_amount',
-        'follow_up_date',
-        'source',
-        'location',
-        'additional_info'
+        'next_follow_up',
+        'expected_value'
     ];
 
     protected $casts = [
-        'expected_amount' => 'decimal:2',
-        'follow_up_date' => 'date',
-        'additional_info' => 'array'
+        'next_follow_up' => 'date',
+        'expected_value' => 'decimal:2'
     ];
 
     /**
      * Get the user who owns the lead.
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
@@ -71,5 +68,142 @@ class Lead extends Model
                 'shared_at' => now()
             ])
         ]);
+    }
+
+    /**
+     * Get the activities for the lead.
+     */
+    public function activities(): HasMany
+    {
+        return $this->hasMany(LeadActivity::class)->latest();
+    }
+
+    /**
+     * Get the status color for the lead.
+     */
+    public function getStatusColorAttribute(): string
+    {
+        return match($this->status) {
+            'new' => 'primary',
+            'contacted' => 'info',
+            'qualified' => 'success',
+            'proposal' => 'warning',
+            'negotiation' => 'warning',
+            'converted' => 'success',
+            'lost' => 'danger',
+            default => 'secondary'
+        };
+    }
+
+    /**
+     * Get the status label for the lead.
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        return ucfirst($this->status);
+    }
+
+    /**
+     * Get the formatted expected value.
+     */
+    public function getFormattedExpectedValueAttribute(): string
+    {
+        return number_format($this->expected_value, 2);
+    }
+
+    /**
+     * Get the formatted next follow up date.
+     */
+    public function getNextFollowUpFormattedAttribute(): ?string
+    {
+        return $this->next_follow_up?->format('M d, Y');
+    }
+
+    /**
+     * Get the days in pipeline.
+     */
+    public function getDaysInPipelineAttribute(): int
+    {
+        return $this->created_at->diffInDays(now());
+    }
+
+    /**
+     * Check if the lead is overdue for follow up.
+     */
+    public function getIsOverdueAttribute(): bool
+    {
+        return $this->next_follow_up && $this->next_follow_up->isPast();
+    }
+
+    /**
+     * Check if the lead is converted.
+     */
+    public function getIsConvertedAttribute(): bool
+    {
+        return $this->status === 'converted';
+    }
+
+    /**
+     * Check if the lead is lost.
+     */
+    public function getIsLostAttribute(): bool
+    {
+        return $this->status === 'lost';
+    }
+
+    /**
+     * Check if the lead is active.
+     */
+    public function getIsActiveAttribute(): bool
+    {
+        return !$this->is_converted && !$this->is_lost;
+    }
+
+    /**
+     * Create a new activity for the lead.
+     */
+    public function createActivity(string $type, string $description, User $user): LeadActivity
+    {
+        return LeadActivity::createActivity($this, $type, $description, $user);
+    }
+
+    /**
+     * Update the lead status and create an activity.
+     */
+    public function updateStatus(string $newStatus, User $user): bool
+    {
+        $oldStatus = $this->status;
+        $this->status = $newStatus;
+        
+        if ($this->save()) {
+            $this->createActivity(
+                'Status Changed',
+                "Status changed from {$oldStatus} to {$newStatus}",
+                $user
+            );
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Schedule a follow up and create an activity.
+     */
+    public function scheduleFollowUp(string $date, ?string $notes, User $user): bool
+    {
+        $this->next_follow_up = $date;
+        $this->notes = $notes;
+        
+        if ($this->save()) {
+            $this->createActivity(
+                'Follow Up Scheduled',
+                "Follow up scheduled for {$date}" . ($notes ? ": {$notes}" : ''),
+                $user
+            );
+            return true;
+        }
+        
+        return false;
     }
 }

@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
@@ -36,7 +37,13 @@ class User extends Authenticatable
         'status',
         'settings',
         'target_amount',
-        'target_leads'
+        'target_leads',
+        'monthly_sales_target',
+        'monthly_leads_target',
+        'quarterly_sales_target',
+        'quarterly_leads_target',
+        'yearly_sales_target',
+        'yearly_leads_target'
     ];
 
     /**
@@ -64,6 +71,9 @@ class User extends Authenticatable
             'target_amount' => 'decimal:2',
             'target_leads' => 'integer',
             'status' => 'boolean',
+            'monthly_sales_target' => 'decimal:2',
+            'quarterly_sales_target' => 'decimal:2',
+            'yearly_sales_target' => 'decimal:2'
         ];
     }
 
@@ -158,14 +168,95 @@ class User extends Authenticatable
         return $this->hasMany(Task::class);
     }
 
-    public function role()
-    {
-        return $this->belongsTo(Role::class);
-    }
-
 
     public function hasRole($role): bool
     {
         return $this->role && $this->role->slug === $role;
     }
+
+    public function getCurrentAttendance()
+    {
+        return $this->attendances()
+            ->whereDate('date', now())
+            ->first();
+    }
+
+    public function isPresent(): bool
+    {
+        $attendance = $this->getCurrentAttendance();
+        return $attendance && $attendance->status === 'present';
+    }
+
+    public function isLate(): bool
+    {
+        $attendance = $this->getCurrentAttendance();
+        return $attendance && $attendance->status === 'late';
+    }
+
+    public function isAbsent(): bool
+    {
+        $attendance = $this->getCurrentAttendance();
+        return !$attendance || $attendance->status === 'absent';
+    }
+
+    public function getMonthlyPerformance()
+    {
+        $monthStart = now()->startOfMonth();
+        $monthEnd = now()->endOfMonth();
+
+        return [
+            'sales' => $this->sales()
+                ->whereBetween('created_at', [$monthStart, $monthEnd])
+                ->sum('amount'),
+            'leads' => $this->leads()
+                ->whereBetween('created_at', [$monthStart, $monthEnd])
+                ->count(),
+            'converted_leads' => $this->leads()
+                ->where('status', 'converted')
+                ->whereBetween('created_at', [$monthStart, $monthEnd])
+                ->count()
+        ];
+    }
+
+    public function getDailySummary()
+    {
+        $today = now()->startOfDay();
+        $tomorrow = now()->addDay()->startOfDay();
+
+        return [
+            'sales' => $this->sales()
+                ->whereBetween('created_at', [$today, $tomorrow])
+                ->sum('amount'),
+            'leads' => $this->leads()
+                ->whereBetween('created_at', [$today, $tomorrow])
+                ->count(),
+            'attendance' => $this->getCurrentAttendance()
+        ];
+    }
+
+    /**
+     * Get the role that owns the user.
+     */
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class);
+    }
+
+    /**
+     * Get the expenses for the user.
+     */
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class);
+    }
+
+    /**
+     * Get the location records for the user.
+     */
+    public function locations(): HasMany
+    {
+        return $this->hasMany(Location::class);
+    }
+
+  
 }

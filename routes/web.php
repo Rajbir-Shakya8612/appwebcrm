@@ -8,6 +8,12 @@ use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\SalespersonDashboardController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\LocationController;
+use App\Http\Controllers\LeadController;
+use App\Http\Controllers\SaleController;
+use App\Http\Controllers\PerformanceController;
+use App\Http\Controllers\SettingsController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -92,6 +98,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/locations/{location}', [AdminDashboardController::class, 'showLocation'])->name('admin.locations.show');
     Route::put('/locations/{location}', [AdminDashboardController::class, 'updateLocation'])->name('admin.locations.update');
     Route::delete('/locations/{location}', [AdminDashboardController::class, 'deleteLocation'])->name('admin.locations.delete');
+
+    // Location Tracking
+    Route::get('/location-tracks', [LocationController::class, 'getTracksByDate'])->name('admin.location.tracks');
+    Route::get('/attendance/timeline', [AttendanceController::class, 'timeline'])->name('admin.attendance.timeline');
 });
 
 require __DIR__.'/auth.php';
@@ -135,6 +145,8 @@ Route::middleware(['auth', 'salesperson'])->prefix('admin')->group(function () {
     Route::post('/attendance/checkin', [AttendanceController::class, 'checkIn']);
     Route::post('/attendance/checkout', [AttendanceController::class, 'checkOut']);
     Route::get('/attendance/status', [AttendanceController::class, 'status']);
+    Route::get('/attendance/monthly-report', [AttendanceController::class, 'monthlyReport'])->name('salesperson.attendance.report');
+    Route::get('/attendance/calendar-events', [AttendanceController::class, 'calendarEvents']);
 
     // Leads
     Route::post('/leads', [LeadController::class, 'store']);
@@ -146,8 +158,11 @@ Route::middleware(['auth', 'salesperson'])->prefix('admin')->group(function () {
     Route::get('/sales/{sale}', [SaleController::class, 'show']);
     Route::put('/sales/{sale}', [SaleController::class, 'update']);
 
-    // Location updates
+    // Location Tracking Routes
     Route::post('/location/update', [LocationController::class, 'update']);
+    Route::get('/location/today-tracks', [LocationController::class, 'getTodayTracks']);
+    Route::get('/location/monthly-tracks', [LocationController::class, 'getMonthlyTracks']);
+    Route::get('/location/tracks-by-date', [LocationController::class, 'getTracksByDate']);
 });
 
 
@@ -158,4 +173,17 @@ Route::prefix('settings')->group(function () {
     Route::put('/password', [SettingsController::class, 'updatePassword']);
     Route::put('/notifications', [SettingsController::class, 'updateNotificationPreferences']);
     Route::put('/targets', [SettingsController::class, 'updateTargets']);
+});
+
+// Lead Management Routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('/admin/leads', [LeadController::class, 'index'])->name('leads.index');
+    Route::post('/admin/leads', [LeadController::class, 'store'])->name('leads.store');
+    Route::get('/admin/leads/{lead}', [LeadController::class, 'show'])->name('leads.show');
+    Route::put('/admin/leads/{lead}', [LeadController::class, 'update'])->name('leads.update');
+    Route::delete('/admin/leads/{lead}', [LeadController::class, 'destroy'])->name('leads.destroy');
+    Route::put('/admin/leads/{lead}/status', [LeadController::class, 'updateStatus'])->name('leads.status');
+    Route::post('/admin/leads/{lead}/follow-up', [LeadController::class, 'scheduleFollowUp'])->name('leads.follow-up');
+    Route::get('/admin/leads/status/{status}', [LeadController::class, 'getLeadsByStatus'])->name('leads.by-status');
+    Route::get('/admin/leads/stats', [LeadController::class, 'getLeadStats'])->name('leads.stats');
 });
