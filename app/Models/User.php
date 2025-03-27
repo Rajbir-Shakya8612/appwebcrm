@@ -168,7 +168,6 @@ class User extends Authenticatable
         return $this->hasMany(Task::class);
     }
 
-
     public function hasRole($role): bool
     {
         return $this->role && $this->role->slug === $role;
@@ -243,20 +242,97 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the expenses for the user.
+     * Get user's meetings
      */
-    public function expenses(): HasMany
+    public function meetings(): HasMany
     {
-        return $this->hasMany(Expense::class);
+        return $this->hasMany(Meeting::class);
     }
 
     /**
-     * Get the location records for the user.
+     * Get user's plans
      */
-    public function locations(): HasMany
+    public function plans(): HasMany
     {
-        return $this->hasMany(Location::class);
+        return $this->hasMany(Plan::class);
     }
+
+    /**
+     * Get user's current month plan
+     */
+    public function getCurrentMonthPlan()
+    {
+        $now = now();
+        return $this->plans()
+            ->where('month', $now->month)
+            ->where('year', $now->year)
+            ->first();
+    }
+
+    /**
+     * Get user's quarterly plan
+     */
+    public function getCurrentQuarterPlan()
+    {
+        $now = now();
+        $quarter = ceil($now->month / 3);
+        return $this->plans()
+            ->where('year', $now->year)
+            ->where('type', 'quarterly')
+            ->whereIn('month', [($quarter - 1) * 3 + 1, ($quarter - 1) * 3 + 2, ($quarter - 1) * 3 + 3])
+            ->get();
+    }
+
+    /**
+     * Get user's yearly plan
+     */
+    public function getCurrentYearPlan()
+    {
+        return $this->plans()
+            ->where('year', now()->year)
+            ->where('type', 'yearly')
+            ->first();
+    }
+
+    /**
+     * Get user's pending meetings
+     */
+    public function getPendingMeetings()
+    {
+        return $this->meetings()
+            ->where('status', 'pending')
+            ->where('meeting_date', '>=', now())
+            ->orderBy('meeting_date')
+            ->get();
+    }
+
+    /**
+     * Get user's pending meeting reminders
+     */
+    public function getPendingReminders()
+    {
+        return $this->meetings()
+            ->where('status', 'pending')
+            ->where('reminder_date', '<=', now())
+            ->where('meeting_date', '>', now())
+            ->get();
+    }
+
+    // /**
+    //  * Get the expenses for the user.
+    //  */
+    // public function expenses(): HasMany
+    // {
+    //     return $this->hasMany(Expense::class);
+    // }
+
+    // /**
+    //  * Get the location records for the user.
+    //  */
+    // public function locations(): HasMany
+    // {
+    //     return $this->hasMany(Location::class);
+    // }
 
   
 }

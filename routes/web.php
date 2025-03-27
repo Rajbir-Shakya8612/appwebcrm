@@ -14,6 +14,8 @@ use App\Http\Controllers\LeadController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\PerformanceController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\MeetingController;
+use App\Http\Controllers\PlanController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -102,6 +104,18 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     // Location Tracking
     Route::get('/location-tracks', [LocationController::class, 'getTracksByDate'])->name('admin.location.tracks');
     Route::get('/attendance/timeline', [AttendanceController::class, 'timeline'])->name('admin.attendance.timeline');
+
+
+    //new routes add
+    Route::get('/admin/leads', [LeadController::class, 'index'])->name('leads.index');
+    Route::post('/admin/leads', [LeadController::class, 'store'])->name('leads.store');
+    Route::get('/admin/leads/{lead}', [LeadController::class, 'show'])->name('leads.show');
+    Route::put('/admin/leads/{lead}', [LeadController::class, 'update'])->name('leads.update');
+    Route::delete('/admin/leads/{lead}', [LeadController::class, 'destroy'])->name('leads.destroy');
+    Route::put('/admin/leads/{lead}/status', [LeadController::class, 'updateStatus'])->name('leads.status');
+    Route::post('/admin/leads/{lead}/follow-up', [LeadController::class, 'scheduleFollowUp'])->name('leads.follow-up');
+    Route::get('/admin/leads/status/{status}', [LeadController::class, 'getLeadsByStatus'])->name('leads.by-status');
+    Route::get('/admin/leads/stats', [LeadController::class, 'getLeadStats'])->name('leads.stats');
 });
 
 require __DIR__.'/auth.php';
@@ -163,6 +177,24 @@ Route::middleware(['auth', 'salesperson'])->prefix('admin')->group(function () {
     Route::get('/location/today-tracks', [LocationController::class, 'getTodayTracks']);
     Route::get('/location/monthly-tracks', [LocationController::class, 'getMonthlyTracks']);
     Route::get('/location/tracks-by-date', [LocationController::class, 'getTracksByDate']);
+
+    // Meeting Routes
+    Route::get('/meetings', [MeetingController::class, 'index'])->name('salesperson.meetings');
+    Route::post('/meetings', [MeetingController::class, 'store'])->name('salesperson.meetings.store');
+    Route::get('/meetings/{meeting}', [MeetingController::class, 'show'])->name('salesperson.meetings.show');
+    Route::put('/meetings/{meeting}', [MeetingController::class, 'update'])->name('salesperson.meetings.update');
+    Route::delete('/meetings/{meeting}', [MeetingController::class, 'destroy'])->name('salesperson.meetings.destroy');
+    Route::get('/meetings/pending-reminders', [MeetingController::class, 'getPendingReminders'])->name('salesperson.meetings.reminders');
+    Route::put('/meetings/{meeting}/complete', [MeetingController::class, 'markAsCompleted'])->name('salesperson.meetings.complete');
+
+    // Plan Routes
+    Route::get('/plans', [PlanController::class, 'index'])->name('salesperson.plans');
+    Route::post('/plans', [PlanController::class, 'store'])->name('salesperson.plans.store');
+    Route::get('/plans/{plan}', [PlanController::class, 'show'])->name('salesperson.plans.show');
+    Route::put('/plans/{plan}', [PlanController::class, 'update'])->name('salesperson.plans.update');
+    Route::get('/plans/current-month', [PlanController::class, 'getCurrentMonthPlan'])->name('salesperson.plans.current');
+    Route::get('/plans/quarterly', [PlanController::class, 'getQuarterlyPlan'])->name('salesperson.plans.quarterly');
+    Route::get('/plans/yearly', [PlanController::class, 'getYearlyPlan'])->name('salesperson.plans.yearly');
 });
 
 
@@ -175,15 +207,3 @@ Route::prefix('settings')->group(function () {
     Route::put('/targets', [SettingsController::class, 'updateTargets']);
 });
 
-// Lead Management Routes
-Route::middleware(['auth'])->group(function () {
-    Route::get('/admin/leads', [LeadController::class, 'index'])->name('leads.index');
-    Route::post('/admin/leads', [LeadController::class, 'store'])->name('leads.store');
-    Route::get('/admin/leads/{lead}', [LeadController::class, 'show'])->name('leads.show');
-    Route::put('/admin/leads/{lead}', [LeadController::class, 'update'])->name('leads.update');
-    Route::delete('/admin/leads/{lead}', [LeadController::class, 'destroy'])->name('leads.destroy');
-    Route::put('/admin/leads/{lead}/status', [LeadController::class, 'updateStatus'])->name('leads.status');
-    Route::post('/admin/leads/{lead}/follow-up', [LeadController::class, 'scheduleFollowUp'])->name('leads.follow-up');
-    Route::get('/admin/leads/status/{status}', [LeadController::class, 'getLeadsByStatus'])->name('leads.by-status');
-    Route::get('/admin/leads/stats', [LeadController::class, 'getLeadStats'])->name('leads.stats');
-});
