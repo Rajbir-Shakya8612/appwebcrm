@@ -16,6 +16,7 @@ use App\Http\Controllers\PerformanceController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\MeetingController;
 use App\Http\Controllers\PlanController;
+use App\Http\Controllers\LocationTrackController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -73,6 +74,12 @@ Route::middleware(['auth'])->group(function () {
     ]);
 
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+
+    // Location Tracking Routes
+    Route::post('/location/tracks', [LocationTrackController::class, 'store'])->name('location.store');
+    Route::get('/location/today-tracks', [LocationTrackController::class, 'getTodayTracks'])->name('location.today');
+    Route::get('/location/monthly-timeline', [LocationTrackController::class, 'getMonthlyTimeline'])->name('location.monthly');
+    Route::get('/location/stats', [LocationTrackController::class, 'getLocationStats'])->name('location.stats');
 });
 Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     // Dashboard
@@ -126,7 +133,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
 
     // Locations Management
     Route::get('/locations', [AdminDashboardController::class, 'locations'])->name('admin.locations');
-    Route::post('/locations', [AdminDashboardController::class, 'createLocation'])->name('admin.locations.create');
+    Route::post('/locations', [AdminDashboardController::class, 'createLocation'])->name('admin.locations.store');
     Route::get('/locations/{location}', [AdminDashboardController::class, 'showLocation'])->name('admin.locations.show');
     Route::put('/locations/{location}', [AdminDashboardController::class, 'updateLocation'])->name('admin.locations.update');
     Route::delete('/locations/{location}', [AdminDashboardController::class, 'deleteLocation'])->name('admin.locations.delete');

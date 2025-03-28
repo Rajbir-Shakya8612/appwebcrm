@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('content')
 <div class="container-fluid">
@@ -46,9 +46,9 @@
                                         <button class="btn btn-sm btn-info" onclick="viewLocation({{ $location->id }})">
                                             <i class="fas fa-eye"></i>
                                         </button>
-                                        <button class="btn btn-sm btn-warning" onclick="editLocation({{ $location->id }})">
+                                        {{-- <button class="btn btn-sm btn-warning" onclick="editLocation({{ $location->id }})">
                                             <i class="fas fa-edit"></i>
-                                        </button>
+                                        </button> --}}
                                         <button class="btn btn-sm btn-danger" onclick="deleteLocation({{ $location->id }})">
                                             <i class="fas fa-trash"></i>
                                         </button>
@@ -159,13 +159,11 @@ function viewLocation(id) {
     window.location.href = `{{ route("admin.locations.show", "") }}/${id}`;
 }
 
-function editLocation(id) {
-    window.location.href = `{{ route("admin.locations.edit", "") }}/${id}`;
-}
+
 
 function deleteLocation(id) {
     if (confirm('Are you sure you want to delete this location?')) {
-        fetch(`{{ route("admin.locations.destroy", "") }}/${id}`, {
+        fetch(`{{ route("admin.locations.delete", "") }}/${id}`, {
             method: 'DELETE',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'

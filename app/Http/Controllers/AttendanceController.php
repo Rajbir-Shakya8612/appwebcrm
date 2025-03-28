@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Dispatch;
 
 class AttendanceController extends Controller
 {
@@ -86,113 +87,136 @@ class AttendanceController extends Controller
 
     public function checkIn(Request $request)
     {
-        $user = Auth::user();
-        $now = Carbon::now();
-        $today = $now->toDateString();
-        
-        // Check if already checked in
-        $existingAttendance = Attendance::where('user_id', $user->id)
-            ->whereDate('date', $today)
-            ->first();
+        try {
+            $user = Auth::user();
+            $now = Carbon::now();
+            $today = $now->toDateString();
             
-        if ($existingAttendance && $existingAttendance->check_in_time) {
+            // Check if already checked in
+            $existingAttendance = Attendance::where('user_id', $user->id)
+                ->whereDate('date', $today)
+                ->first();
+                
+            if ($existingAttendance && $existingAttendance->check_in_time) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Already checked in'
+                ]);
+            }
+            
+            // Create or update attendance record
+            $attendance = $existingAttendance ?? new Attendance();
+            $attendance->user_id = $user->id;
+            $attendance->date = $today;
+            $attendance->check_in_time = $now;
+            $attendance->check_in_location = json_encode([
+                'latitude' => $request->latitude,
+                'longitude' => $request->longitude,
+                'address' => $request->address
+            ]);
+            
+            // Check if late
+            if (Attendance::isLate($now)) {
+                $attendance->status = 'late';
+                // Send notification in background
+                dispatch(function() use ($user) {
+                    $this->sendLateNotification($user);
+                })->afterResponse();
+            } else {
+                $attendance->status = 'present';
+            }
+            
+            $attendance->save();
+            
+            // Record activity in background
+            dispatch(function() use ($user, $now, $request, $attendance) {
+                Activity::create([
+                    'user_id' => $user->id,
+                    'type' => 'attendance',
+                    'description' => "Checked in " . ($attendance->status === 'late' ? 'late' : 'on time'),
+                    'details' => json_encode([
+                        'time' => $now->format('h:i A'),
+                        'location' => $request->address
+                    ])
+                ]);
+            })->afterResponse();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Checked in successfully',
+                'time' => $now->format('h:i A'),
+                'status' => $attendance->status
+            ]);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Already checked in'
-            ]);
+                'message' => 'Error checking in: ' . $e->getMessage()
+            ], 500);
         }
-        
-        // Create or update attendance record
-        $attendance = $existingAttendance ?? new Attendance();
-        $attendance->user_id = $user->id;
-        $attendance->date = $today;
-        $attendance->check_in_time = $now;
-        $attendance->check_in_location = json_encode([
-            'latitude' => $request->latitude,
-            'longitude' => $request->longitude,
-            'address' => $request->address
-        ]);
-        
-        // Check if late
-        if (Attendance::isLate($now)) {
-            $attendance->status = 'late';
-            $this->sendLateNotification($user);
-        } else {
-            $attendance->status = 'present';
-        }
-        
-        $attendance->save();
-        
-        // Record activity
-        Activity::create([
-            'user_id' => $user->id,
-            'type' => 'attendance',
-            'description' => "Checked in " . ($attendance->status === 'late' ? 'late' : 'on time'),
-            'details' => json_encode([
-                'time' => $now->format('h:i A'),
-                'location' => $request->address
-            ])
-        ]);
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Checked in successfully',
-            'time' => $now->format('h:i A'),
-            'status' => $attendance->status
-        ]);
     }
 
     public function checkOut(Request $request)
     {
-        $user = Auth::user();
-        $now = Carbon::now();
-        $today = $now->toDateString();
-        
-        // Get today's attendance
-        $attendance = Attendance::where('user_id', $user->id)
-            ->whereDate('date', $today)
-            ->first();
+        try {
+            $user = Auth::user();
+            $now = Carbon::now();
+            $today = $now->toDateString();
             
-        if (!$attendance || !$attendance->check_in_time) {
+            // Get today's attendance
+            $attendance = Attendance::where('user_id', $user->id)
+                ->whereDate('date', $today)
+                ->first();
+                
+            if (!$attendance || !$attendance->check_in_time) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Not checked in'
+                ]);
+            }
+            
+            // Update attendance record
+            $attendance->check_out_time = $now;
+            $attendance->check_out_location = json_encode([
+                'latitude' => $request->latitude,
+                'longitude' => $request->longitude,
+                'address' => $request->address
+            ]);
+            
+            // Calculate working hours
+            $attendance->working_hours = $attendance->calculateWorkingHours();
+            $attendance->save();
+            
+            // Record activity in background
+            dispatch(function() use ($user, $now, $request, $attendance) {
+                Activity::create([
+                    'user_id' => $user->id,
+                    'type' => 'attendance',
+                    'description' => 'Checked out',
+                    'details' => json_encode([
+                        'time' => $now->format('h:i A'),
+                        'working_hours' => $attendance->working_hours,
+                        'location' => $request->address
+                    ])
+                ]);
+            })->afterResponse();
+            
+            // Send notification in background
+            dispatch(function() use ($user, $attendance) {
+                $this->sendCheckOutNotification($user, $attendance);
+            })->afterResponse();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Checked out successfully',
+                'time' => $now->format('h:i A'),
+                'working_hours' => $attendance->working_hours
+            ]);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Not checked in'
-            ]);
+                'message' => 'Error checking out: ' . $e->getMessage()
+            ], 500);
         }
-        
-        // Update attendance record
-        $attendance->check_out_time = $now;
-        $attendance->check_out_location = json_encode([
-            'latitude' => $request->latitude,
-            'longitude' => $request->longitude,
-            'address' => $request->address
-        ]);
-        
-        // Calculate working hours
-        $attendance->working_hours = $attendance->calculateWorkingHours();
-        $attendance->save();
-        
-        // Record activity
-        Activity::create([
-            'user_id' => $user->id,
-            'type' => 'attendance',
-            'description' => 'Checked out',
-            'details' => json_encode([
-                'time' => $now->format('h:i A'),
-                'working_hours' => $attendance->working_hours,
-                'location' => $request->address
-            ])
-        ]);
-        
-        // Send WhatsApp notification
-        $this->sendCheckOutNotification($user, $attendance);
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Checked out successfully',
-            'time' => $now->format('h:i A'),
-            'working_hours' => $attendance->working_hours
-        ]);
     }
 
     public function status()

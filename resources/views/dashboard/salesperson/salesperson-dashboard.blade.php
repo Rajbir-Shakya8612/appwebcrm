@@ -15,7 +15,11 @@
                 <div class="info-card check-in-card shadow-sm text-center p-3">
                     <p class="small fw-semibold text-dark">Check In Time</p>
                     <p class="h5 fw-bold text-dark" id="checkInTime">
-                          {{ $attendance->check_in_time ? \Carbon\Carbon::parse($attendance->check_in_time)->format('h:i A') : '--:--' }}
+                        @if($attendance && $attendance->check_in_time)
+                            {{ \Carbon\Carbon::parse($attendance->check_in_time)->format('h:i A') }}
+                        @else
+                            --:--
+                        @endif
                     </p>
                     @if($attendance && $attendance->status === 'late')
                         <span class="badge bg-warning text-dark">Late</span>
@@ -28,7 +32,11 @@
                 <div class="info-card check-out-card shadow-sm text-center p-3">
                     <p class="small fw-semibold text-dark">Check Out Time</p>
                     <p class="h5 fw-bold text-dark" id="checkOutTime">
-                        {{ $attendance->check_out_time ? \Carbon\Carbon::parse($attendance->check_out_time)->format('h:i A') : '--:--' }}
+                        @if($attendance && $attendance->check_out_time)
+                            {{ \Carbon\Carbon::parse($attendance->check_out_time)->format('h:i A') }}
+                        @else
+                            --:--
+                        @endif
                     </p>
                 </div>
             </div>
@@ -333,12 +341,16 @@
     </div>
 
     @push('scripts')
+     <script>
+        let events = @json($events);
+    </script>
         <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
-        <script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google.maps_api_key') }}"></script>
+        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBl5N0v6zO372f3-RU-mSKNAMyN1Cu0Rzk"></script>
         <script>
             let map;
             let marker;
             let locationUpdateInterval;
+            let isTracking = false;
 
             // Initialize map
             function initMap() {
@@ -354,7 +366,7 @@
 
             // Update location
             function updateLocation(position) {
-                const { latitude, longitude } = position.coords;
+                const { latitude, longitude, speed, accuracy } = position.coords;
                 const location = { lat: latitude, lng: longitude };
                 
                 map.setCenter(location);
@@ -363,16 +375,56 @@
                 // Update location display
                 document.getElementById('currentLocation').textContent = 
                     `Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`;
+                
+                // Record location if tracking is active
+                if (isTracking) {
+                    recordLocation(latitude, longitude, speed, accuracy);
+                }
+            }
+
+            // Record location to server
+            function recordLocation(latitude, longitude, speed, accuracy) {
+                $.ajax({
+                    url: '/location/tracks',
+                    method: 'POST',
+                    data: {
+                        latitude: latitude,
+                        longitude: longitude,
+                        speed: speed,
+                        accuracy: accuracy,
+                        address: 'Current Location', // You can use reverse geocoding here
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        if (!response.success) {
+                            console.error('Failed to record location:', response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Error recording location:', xhr);
+                    }
+                });
             }
 
             // Start location tracking
             function startLocationTracking() {
                 if ("geolocation" in navigator) {
-                    navigator.geolocation.watchPosition(updateLocation, null, {
-                        enableHighAccuracy: true,
-                        timeout: 5000,
-                        maximumAge: 0
-                    });
+                    navigator.geolocation.watchPosition(
+                        updateLocation,
+                        function(error) {
+                            console.error('Geolocation error:', error);
+                            document.getElementById('currentLocation').textContent = 
+                                'Error getting location: ' + error.message;
+                        },
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 5000,
+                            maximumAge: 0
+                        }
+                    );
+                } else {
+                    document.getElementById('currentLocation').textContent = 
+                        'Geolocation is not supported by your browser';
                 }
             }
 
@@ -386,7 +438,7 @@
                             data: {
                                 latitude: position.coords.latitude,
                                 longitude: position.coords.longitude,
-                                address: 'Current Location', // You can use reverse geocoding here
+                                address: 'Current Location',
                                 _token: '{{ csrf_token() }}'
                             },
                             success: function(response) {
@@ -395,6 +447,8 @@
                                     if (response.status === 'late') {
                                         showLateReasonModal();
                                     }
+                                    // Start location tracking after successful check-in
+                                    isTracking = true;
                                     Swal.fire({
                                         icon: 'success',
                                         title: 'Success!',
@@ -426,6 +480,9 @@
             // Check out function
             function checkOut() {
                 if ("geolocation" in navigator) {
+                    // Stop location tracking before checking out
+                    isTracking = false;
+                    
                     navigator.geolocation.getCurrentPosition(function(position) {
                         $.ajax({
                             url: '/salesperson/attendance/checkout',
@@ -433,7 +490,7 @@
                             data: {
                                 latitude: position.coords.latitude,
                                 longitude: position.coords.longitude,
-                                address: 'Current Location', // You can use reverse geocoding here
+                                address: 'Current Location',
                                 _token: '{{ csrf_token() }}'
                             },
                             success: function(response) {
