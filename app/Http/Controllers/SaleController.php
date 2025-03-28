@@ -15,7 +15,7 @@ class SaleController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(10);
             
-        return view('dashboard.salesperson.sales.index', compact('sales'));
+        return view('dashboard.salesperson.leads.index', compact('sales'));
     }
 
     public function store(Request $request)

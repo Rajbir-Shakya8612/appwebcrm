@@ -1,0 +1,265 @@
+
+/* Container Styling */
+.attendance-container {
+    background: #f8f9fa;
+    /* Soft Grey */
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border: 1px solid #dee2e6;
+    /* Subtle Border */
+    position: relative;
+}
+
+/* Full-Width Border Below Attendance */
+.attendance-container::after {
+    content: "";
+    display: block;
+    width: 100%;
+    height: 2px;
+    background: #dee2e6;
+    /* Light Grey Border */
+    position: absolute;
+    bottom: -10px;
+    left: 0;
+}
+
+/* Cards Styling */
+.info-card {
+    border-radius: 10px;
+    padding: 15px;
+    color: #333;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease-in-out;
+    font-weight: 600;
+    border: 1px solid #dee2e6;
+    /* Light border for each card */
+}
+
+/* Different Background Colors for Cards */
+.check-in-card {
+    background: #d4edda;
+}
+
+/* Light Green */
+.check-out-card {
+    background: #f8d7da;
+}
+
+/* Light Red */
+.working-hours-card {
+    background: #fff3cd;
+}
+
+/* Light Yellow */
+.location-card {
+    background: #d1ecf1;
+}
+
+/* Light Blue */
+
+/* Hover Effect */
+.info-card:hover {
+    transform: translateY(-5px);
+}
+
+/* Buttons - Soft Colors */
+.custom-btn.btn-primary-soft {
+    background: #007bff1a;
+    color: #007bff;
+    font-weight: 700;
+    border: 1px solid #007bff;
+    padding: 8px 20px;
+    border-radius: 8px;
+    transition: all 0.3s ease-in-out;
+}
+
+.btn-primary-soft:hover {
+    background: #007bff;
+    color: white;
+}
+
+.btn-danger-soft {
+    background: #dc35451a;
+    color: #dc3545;
+    font-weight: 700;
+    border: 1px solid #dc3545;
+    padding: 8px 20px;
+    border-radius: 8px;
+    transition: all 0.3s ease-in-out;
+}
+
+.btn-danger-soft:hover {
+    background: #dc3545;
+    color: white;
+}
+
+/* Centered Location Card */
+.location-card {
+    margin-top: 20px;
+    text-align: center;
+}
+/* salesperson-dashboard card top attandance css close */
+
+
+  
+  /* Sidebar Styling */
+  #sidebar {
+      width: 250px;
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      background: white;
+      box-shadow: 2px 0px 5px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease-in-out;
+  }
+
+  .collapsed #sidebar {
+      margin-left: -250px;
+  }
+
+  /* Main Content */
+  #main-content {
+      margin-left: 250px;
+      transition: all 0.3s ease-in-out;
+  }
+
+
+
+
+  .collapsed #main-content {
+      margin-left: 0;
+      width: 100%;
+  }
+
+
+  @media (max-width: 992px) {
+      #sidebar {
+          margin-left: -250px;
+      }
+
+      #main-content {
+          margin-left: 0;
+      }
+
+  }
+
+  .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-weight: 500;
+      color: #333;
+      text-decoration: none;
+      transition: background 0.3s ease, color 0.3s ease;
+      margin: 5px 0;
+  }
+
+  .sidebar-link i {
+      font-size: 18px;
+      width: 25px;
+      text-align: center;
+  }
+
+  .sidebar-link:hover,
+  .sidebar-link.active {
+      background: linear-gradient(135deg, #007bff, #0056b3);
+      color: white;
+  }
+
+  .month-calendar {
+      background: white;
+      border-radius: 8px;
+      margin: 1rem;
+      padding: 1rem;
+  }
+
+  .month-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+      padding: 10px;
+  }
+
+  .month-header {
+      font-weight: bold;
+      text-align: center;
+      padding: 8px;
+      background: #007bff;
+      color: white;
+      border-radius: 5px;
+  }
+
+  .month-day {
+      padding: 15px;
+      text-align: center;
+      min-height: 80px;
+      border: 1px solid #ddd;
+      background: #f9f9f9;
+      border-radius: 5px;
+  }
+
+  .event-indicator {
+      margin-top: 5px;
+      padding: 5px;
+      color: white;
+      border-radius: 3px;
+      font-size: 12px;
+      cursor: pointer;
+  }
+
+  /* Remove default border from SweetAlert close button */
+  .custom-btn {
+      border: 1px solid #007bff;
+      color: #007bff;
+      background: transparent;
+      transition: all 0.3s ease;
+  }
+
+  .custom-btn:hover {
+      background: #007bff;
+      color: white;
+      box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
+      transform: translateY(-2px);
+  }
+
+  .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+  }
+
+  #calendarTitle {
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #343a40;
+  }
+
+  .event-indicator {
+      padding: 5px;
+      border-radius: 5px;
+      font-weight: bold;
+      text-transform: capitalize;
+      /* First letter capital */
+  }
+
+  /* Remove default border from SweetAlert close button */
+  .custom-close-button {
+      border: none !important;
+      outline: none !important;
+      box-shadow: none !important;
+      color: red !important;
+      font-size: 22px !important;
+      font-weight: bold;
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      cursor: pointer;
+  }
+
+

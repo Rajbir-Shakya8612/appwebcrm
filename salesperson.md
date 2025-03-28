@@ -72,3 +72,96 @@ UI/UX design achha hona chahiye jisse dekh kr achha lge professional lge kanban,
     google map api key :- AIzaSyBl5N0v6zO372f3-RU-mSKNAMyN1Cu0Rzk
 
     whatspp number :- 8607807612
+
+
+
+
+
+
+    ======= important =======
+
+    1. Attandance table main leave resion application bhi deni hai
+
+
+<!-- google map script real data update show -->
+
+     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBl5N0v6zO372f3-RU-mSKNAMyN1Cu0Rzk&callback=initMap" async defer></script>
+
+        <script>
+            function initMap() {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        var latLng = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+
+                        var map = new google.maps.Map(document.getElementById('map'), {
+                            center: latLng,
+                            zoom: 15
+                        });
+
+                        new google.maps.Marker({
+                            position: latLng,
+                            map: map
+                        });
+
+                        document.getElementById('currentLocation').innerHTML = 
+                            `Latitude: ${position.coords.latitude} <br> Longitude: ${position.coords.longitude}`;
+                    });
+                } else {
+                    document.getElementById('currentLocation').textContent = 'Geolocation not supported';
+                }
+            }
+        </script>
+
+
+        <!-- Attendance Section -->
+        <div class="attendance-container p-4 rounded shadow-sm">
+            <h3 class="h5 text-center mb-4 text-dark fw-bold pb-4" style="border-bottom: 2px solid black;">Attendance</h3>
+
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="info-card location-card shadow-sm text-center p-3">
+                        <p class="small fw-semibold text-dark">Current Location</p>
+                        <div id="map" style="height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+<!-- google map script real data update close -->
+
+     <!-- Calendar Navigation -->
+        <div class="bg-white rounded shadow mt-4 text-center">
+            <!-- Calendar Header -->
+            <div class="p-4 border-bottom d-flex flex-column align-items-center">
+                <h3 id="calendarTitle" class="h5 d-flex align-items-center fw-bold">
+                    <i class="fas fa-calendar-alt text-primary me-2"></i> <!-- Calendar Icon -->
+                    <span>March 2025</span> <!-- Month & Year Display -->
+                </h3>
+                <div class="btn-group mt-3" role="group">
+                    <button id="prevMonth" class="btn btn-outline-dark custom-btn">
+                        <i class="fas fa-chevron-left"></i> Prev
+                    </button>
+                    <button id="monthView" class="btn btn-outline-dark custom-btn">
+                        <i class="fas fa-th-large"></i> Month
+                    </button>
+                    <button id="weekView" class="btn btn-outline-dark custom-btn">
+                        <i class="fas fa-calendar-week"></i> Week
+                    </button>
+                    <button id="dayView" class="btn btn-outline-dark custom-btn">
+                        <i class="fas fa-calendar-day"></i> Day
+                    </button>
+                    <button id="nextMonth" class="btn btn-outline-dark custom-btn">
+                        Next <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- Calendar Body -->
+            <div class="month-calendar">
+                <div class="month-grid" id="calendarGrid">
+                    <!-- Days will be dynamically added here -->
+                </div>
+            </div>
+        </div>

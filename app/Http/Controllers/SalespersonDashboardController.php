@@ -24,7 +24,16 @@ class SalespersonDashboardController extends Controller
         
         // Get total leads
         $totalLeads = Lead::where('user_id', $user->id)->count();
-        
+
+        $monthlyLeads = $user->leads()
+            ->whereMonth('created_at', now()->month)
+            ->count();
+        $lastMonthLeads = $user->leads()
+            ->whereMonth('created_at', now()->subMonth())
+            ->count();
+        $leadChange = $lastMonthLeads > 0 ? (($monthlyLeads - $lastMonthLeads) / $lastMonthLeads) * 100 : 0;
+
+
         // Get monthly sales
         $monthlySales = Sale::where('user_id', $user->id)
             ->whereMonth('created_at', $now->month)
@@ -67,14 +76,86 @@ class SalespersonDashboardController extends Controller
                     'borderColor' => $meeting->status === 'completed' ? '#059669' : '#2563EB'
                 ];
             });
-            
+
+        $todayMeetings = Meeting::where('user_id', $user->id)
+            ->whereDate('meeting_date', $now)
+            ->count();
+
+
+        // Get today's attendance
+        $attendance = Attendance::where('user_id', $user->id)
+            ->whereDate('date', $now->toDateString())
+            ->first();
+
+        // Get user's tasks
+        $tasks = Task::where('assignee_id', $user->id)
+            ->where('status', '!=', 'completed')
+            ->orderBy('due_date', 'asc')
+            ->get();
+
+        // Performance data
+        $performanceData = $this->getPerformanceData($user);
+
+        // Recent activities
+        $recentActivities = $this->getRecentActivities($user);
+
+
+            // Get meetings for calendar
+            $meetingsShowCalender = Meeting::where('user_id', $user->id)
+                ->where('meeting_date', '>=', $now)
+                ->get()
+                ->map(function ($meeting) {
+                    return [
+                        'id' => $meeting->id,
+                        'title' => $meeting->title,
+                        'start' => $meeting->meeting_date->format('Y-m-d H:i:s'),
+                        'end' => $meeting->meeting_date->addHour()->format('Y-m-d H:i:s'),
+                        'description' => $meeting->description,
+                        'location' => $meeting->location,
+                        'backgroundColor' => $meeting->status === 'completed' ? '#10B981' : '#3B82F6',
+                        'borderColor' => $meeting->status === 'completed' ? '#059669' : '#2563EB'
+                    ];
+                })->toArray(); // Convert to array
+
+        // Get today's attendance
+        $attendanceShowCalender = Attendance::where('user_id', $user->id)
+                ->whereDate('date', $now->toDateString())
+                ->first();
+
+            // Convert attendance to array if it exists
+            $attendanceArray = [];
+            if ($attendanceShowCalender) {
+            // Format the check-in time in 12-hour format with AM/PM
+                $checkInTime = $attendanceShowCalender->check_in_time ? $attendanceShowCalender->check_in_time->format('h:i A') : 'N/A';
+
+                // Create the attendance event
+                $attendanceArray[] = [
+                    'id' => $attendanceShowCalender->id,
+                    'title' => "{$attendanceShowCalender->status} at {$checkInTime}",
+                    'start' => $attendanceShowCalender->date->format('Y-m-d H:i:s'),
+                    'end' => $attendanceShowCalender->date->addHour()->format('Y-m-d H:i:s'),
+                    'description' => 'Checked in for the day',
+                    'location' => $attendanceShowCalender->check_in_location,
+                    'backgroundColor' => '#28a745',
+                    'borderColor' => '#059669'
+                ];
+            }
+
+            // Merge meetings and attendance
+            $events = array_merge($meetingsShowCalender, $attendanceArray);
+        
         return view('dashboard.salesperson.salesperson-dashboard', compact(
             'totalLeads',
             'monthlySales',
             'todayMeetings',
             'targetAchievement',
             'leadStatuses',
-            'meetings'
+            'meetings',
+            'attendance',
+            'tasks',
+            'performanceData',
+            'recentActivities',
+            'events'
         ));
     }
 

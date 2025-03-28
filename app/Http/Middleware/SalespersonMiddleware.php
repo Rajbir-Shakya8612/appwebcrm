@@ -18,21 +18,27 @@ class SalespersonMiddleware
     {
         $user = Auth::user();
 
-        // Agar user logged in nahi hai to use login page pe bhej do
+        // If user is not logged in, redirect to login page
         if (!$user) {
             return redirect('/login');
         }
 
-        // Agar user ka role admin hai
+        // Load the role relationship if not already loaded
+        if (!$user->relationLoaded('role')) {
+            $user->load('role');
+        }
+
+        // If user is a salesperson
         if ($user->role && $user->role->slug === 'salesperson') {
-            // Admin ko sirf /dashboard se /admin/dashboard pe redirect karo
+            // If trying to access /dashboard, redirect to salesperson dashboard
             if ($request->is('dashboard')) {
                 return redirect()->route('salesperson.dashboard');
             }
+            // Allow access to salesperson routes
             return $next($request);
         }
 
-        // Agar non-admin user admin panel access kar raha hai, use /dashboard pe redirect karo
+        // If non-salesperson tries to access salesperson routes, redirect to dashboard
         if ($request->is('salesperson/*')) {
             return redirect('/dashboard');
         }

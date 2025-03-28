@@ -27,7 +27,6 @@ class AdminDashboardController extends Controller
     */
    public function index()
    {
-
       \Log::info('Admin Dashboard accessed by user: ' . Auth::user()->id);
       // Get current date and previous periods
       $today = Carbon::today();
@@ -122,7 +121,7 @@ class AdminDashboardController extends Controller
          ]);
       }
 
-      return view('dashboard.admin-dashboard', $data);
+      return view('dashboard.admin.admin-dashboard', $data);
    }
 
    private function calculateAttendancePercentage($date, $salespersonRoleId)

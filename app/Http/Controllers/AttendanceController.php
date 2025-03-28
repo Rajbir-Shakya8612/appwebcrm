@@ -17,26 +17,79 @@ class AttendanceController extends Controller
         $user = Auth::user();
         $today = Carbon::today();
         
-        $attendance = Attendance::where('user_id', $user->id)
+        // Get today's attendance status
+        $todayAttendance = Attendance::where('user_id', $user->id)
             ->whereDate('date', $today)
             ->first();
             
+        $isCheckedIn = $todayAttendance && $todayAttendance->check_in;
+        
+        // Get monthly attendance stats
         $monthlyAttendance = Attendance::where('user_id', $user->id)
             ->whereMonth('date', $today->month)
             ->whereYear('date', $today->year)
+            ->count();
+            
+        $monthlyPresent = Attendance::where('user_id', $user->id)
+            ->whereMonth('date', $today->month)
+            ->whereYear('date', $today->year)
+            ->where('status', 'present')
+            ->count();
+            
+        $monthlyAbsent = Attendance::where('user_id', $user->id)
+            ->whereMonth('date', $today->month)
+            ->whereYear('date', $today->year)
+            ->where('status', 'absent')
+            ->count();
+
+        // Calculate total working hours for the month
+        // $totalWorkingHours = Attendance::where('user_id', $user->id)
+        //     ->whereMonth('date', $today->month)
+        //     ->whereYear('date', $today->year)
+        //     ->sum('working_hours');
+
+        $totalWorkingHours = Attendance::where('user_id', $user->id)
+            ->whereMonth('date', $today->month)
+            ->whereYear('date', $today->year)
+            ->get()
+            ->sum(function ($attendance) {
+                if ($attendance->check_in && $attendance->check_out) {
+                    return Carbon::parse($attendance->check_out)->diffInHours(Carbon::parse($attendance->check_in));
+                }
+                return 0;
+            });
+
+
+        // Get attendance history
+        $attendanceHistory = Attendance::where('user_id', $user->id)
+            ->orderBy('date', 'desc')
             ->get();
             
-        $locationTracks = LocationTrack::where('user_id', $user->id)
-            ->whereDate('created_at', $today)
-            ->get();
+        // Get calendar events
+        $calendarEvents = Attendance::where('user_id', $user->id)
+            ->get()
+            ->map(function ($attendance) {
+                return [
+                    'title' => $attendance->status === 'present' ? 'Present' : 'Absent',
+                    'start' => $attendance->date,
+                    'backgroundColor' => $attendance->status === 'present' ? '#28a745' : '#dc3545'
+                ];
+            });
             
-        return view('dashboard.salesperson.attendance.index', compact('attendance', 'monthlyAttendance', 'locationTracks'));
+        return view('dashboard.salesperson.attendance.index', compact(
+            'isCheckedIn',
+            'monthlyAttendance',
+            'monthlyPresent',
+            'monthlyAbsent',
+            'totalWorkingHours',
+            'attendanceHistory',
+            'calendarEvents'
+        ));
     }
 
     public function checkIn(Request $request)
     {
         $user = Auth::user();
-        $now = Carbon::now();
         $today = Carbon::today();
         
         // Check if already checked in
@@ -44,72 +97,54 @@ class AttendanceController extends Controller
             ->whereDate('date', $today)
             ->first();
             
-        if ($existingAttendance) {
+        if ($existingAttendance && $existingAttendance->check_in) {
             return response()->json([
                 'success' => false,
-                'message' => 'Already checked in for today'
+                'message' => 'Already checked in'
             ]);
         }
         
-        // Check if late (after 9:30 AM)
-        $isLate = $now->hour > 9 || ($now->hour == 9 && $now->minute > 30);
-        
-        // Create attendance record
-        $attendance = Attendance::create([
-            'user_id' => $user->id,
-            'date' => $today,
-            'check_in' => $now,
-            'check_in_location' => $request->location,
-            'status' => $isLate ? 'late' : 'present',
-            'late_reason' => $isLate ? 'Arrived after 9:30 AM' : null
-        ]);
-        
-        // If late, send WhatsApp notification
-        if ($isLate) {
-            $this->sendLateNotification($user);
-        }
+        // Create or update attendance record
+        $attendance = $existingAttendance ?? new Attendance();
+        $attendance->user_id = $user->id;
+        $attendance->date = $today;
+        $attendance->check_in = Carbon::now();
+        $attendance->status = 'present';
+        $attendance->location = json_encode($request->all());
+        $attendance->save();
         
         return response()->json([
             'success' => true,
-            'message' => $isLate ? 'Checked in (Late)' : 'Checked in successfully',
-            'attendance' => $attendance
+            'message' => 'Checked in successfully'
         ]);
     }
 
     public function checkOut(Request $request)
     {
         $user = Auth::user();
-        $now = Carbon::now();
         $today = Carbon::today();
         
+        // Get today's attendance
         $attendance = Attendance::where('user_id', $user->id)
             ->whereDate('date', $today)
             ->first();
             
-        if (!$attendance) {
+        if (!$attendance || !$attendance->check_in) {
             return response()->json([
                 'success' => false,
-                'message' => 'No check-in found for today'
+                'message' => 'Not checked in'
             ]);
         }
         
-        if ($attendance->check_out) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Already checked out for today'
-            ]);
-        }
-        
-        $attendance->update([
-            'check_out' => $now,
-            'check_out_location' => $request->location,
-            'total_hours' => $now->diffInHours($attendance->check_in)
-        ]);
+        // Update attendance record
+        $attendance->check_out = Carbon::now();
+        $attendance->working_hours = $attendance->check_in->diffInHours($attendance->check_out);
+        $attendance->location = json_encode($request->all());
+        $attendance->save();
         
         return response()->json([
             'success' => true,
-            'message' => 'Checked out successfully',
-            'attendance' => $attendance
+            'message' => 'Checked out successfully'
         ]);
     }
 
@@ -174,5 +209,37 @@ class AttendanceController extends Controller
         ];
         
         return view('dashboard.salesperson.attendance.monthly-report', compact('attendance', 'stats'));
+    }
+
+    public function export()
+    {
+        $user = Auth::user();
+        $attendance = Attendance::where('user_id', $user->id)
+            ->orderBy('date', 'desc')
+            ->get();
+            
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="attendance.csv"',
+        ];
+        
+        $callback = function() use ($attendance) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['Date', 'Check In', 'Check Out', 'Working Hours', 'Status']);
+            
+            foreach ($attendance as $record) {
+                fputcsv($file, [
+                    $record->date->format('Y-m-d'),
+                    $record->check_in ? $record->check_in->format('H:i:s') : '',
+                    $record->check_out ? $record->check_out->format('H:i:s') : '',
+                    $record->working_hours,
+                    $record->status
+                ]);
+            }
+            
+            fclose($file);
+        };
+        
+        return response()->stream($callback, 200, $headers);
     }
 } 

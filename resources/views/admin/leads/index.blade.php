@@ -11,6 +11,9 @@
                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newLeadModal">
                             <i class="fas fa-plus"></i> New Lead
                         </button>
+                        <button type="button" class="btn btn-success" onclick="exportLeads()">
+                            <i class="fas fa-download"></i> Export
+                        </button>
                     </div>
                 </div>
                 <div class="card-body">
@@ -205,7 +208,7 @@ function saveLead() {
     const form = document.getElementById('leadForm');
     const formData = new FormData(form);
     
-    fetch('{{ route("salesperson.leads.store") }}', {
+    fetch('{{ route("admin.leads.store") }}', {
         method: 'POST',
         body: formData,
         headers: {
@@ -223,16 +226,16 @@ function saveLead() {
 }
 
 function viewLead(id) {
-    window.location.href = `{{ route("salesperson.leads.show", "") }}/${id}`;
+    window.location.href = `{{ route("admin.leads.show", "") }}/${id}`;
 }
 
 function editLead(id) {
-    window.location.href = `{{ route("salesperson.leads.edit", "") }}/${id}`;
+    window.location.href = `{{ route("admin.leads.edit", "") }}/${id}`;
 }
 
 function deleteLead(id) {
     if (confirm('Are you sure you want to delete this lead?')) {
-        fetch(`{{ route("salesperson.leads.destroy", "") }}/${id}`, {
+        fetch(`{{ route("admin.leads.destroy", "") }}/${id}`, {
             method: 'DELETE',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
@@ -250,7 +253,7 @@ function deleteLead(id) {
 }
 
 function filterLeads(status) {
-    window.location.href = `{{ route("salesperson.leads.index") }}?status=${status}`;
+    window.location.href = `{{ route("admin.leads.index") }}?status=${status}`;
 }
 
 function getStatusColor(status) {
@@ -264,5 +267,9 @@ function getStatusColor(status) {
     };
     return colors[status] || 'primary';
 }
+
+function exportLeads() {
+    window.location.href = '{{ route("admin.leads.export") }}';
+}
 </script>
-@endpush
+@endpush 

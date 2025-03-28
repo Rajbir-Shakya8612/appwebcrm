@@ -50,10 +50,33 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+require __DIR__ . '/auth.php';
+
+Route::middleware(['auth'])->group(function () {
+    Route::resource('roles', RoleController::class)->names([
+        'index' => 'web.roles.index',
+        'create' => 'web.roles.create',
+        'store' => 'web.roles.store',
+        'show' => 'web.roles.show',
+        'edit' => 'web.roles.edit',
+        'update' => 'web.roles.update',
+        'destroy' => 'web.roles.destroy',
+    ]);
+    Route::resource('users', UserController::class)->names([
+        'index' => 'web.users.index',
+        'create' => 'web.users.create',
+        'store' => 'web.users.store',
+        'show' => 'web.users.show',
+        'edit' => 'web.users.edit',
+        'update' => 'web.users.update',
+        'destroy' => 'web.users.destroy',
+    ]);
+
+    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+});
 Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     // Dashboard
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
-
 
     // Dashboard Data APIs
     Route::get('/attendance/overview', [AdminDashboardController::class, 'getAttendanceOverview']);
@@ -79,9 +102,16 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/sales/analytics', [AdminDashboardController::class, 'salesAnalytics'])->name('admin.sales.analytics');
 
     // Leads Management
-    Route::get('/leads', [AdminDashboardController::class, 'leads'])->name('admin.leads');
-    Route::get('/leads/export', [AdminDashboardController::class, 'exportLeads'])->name('admin.leads.export');
-    Route::get('/leads/analytics', [AdminDashboardController::class, 'leadsAnalytics'])->name('admin.leads.analytics');
+    Route::get('/leads', [LeadController::class, 'index'])->name('admin.leads');
+    Route::post('/leads', [LeadController::class, 'store'])->name('admin.leads.store');
+    Route::get('/leads/{lead}', [LeadController::class, 'show'])->name('admin.leads.show');
+    Route::put('/leads/{lead}', [LeadController::class, 'update'])->name('admin.leads.update');
+    Route::delete('/leads/{lead}', [LeadController::class, 'destroy'])->name('admin.leads.destroy');
+    Route::put('/leads/{lead}/status', [LeadController::class, 'updateStatus'])->name('admin.leads.status');
+    Route::post('/leads/{lead}/follow-up', [LeadController::class, 'scheduleFollowUp'])->name('admin.leads.follow-up');
+    Route::get('/leads/status/{status}', [LeadController::class, 'getLeadsByStatus'])->name('admin.leads.by-status');
+    Route::get('/leads/stats', [LeadController::class, 'getLeadStats'])->name('admin.leads.stats');
+    Route::get('/leads/export', [LeadController::class, 'export'])->name('admin.leads.export');
 
     // User management
     Route::get('/users', [AdminDashboardController::class, 'users'])->name('admin.users');
@@ -104,46 +134,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     // Location Tracking
     Route::get('/location-tracks', [LocationController::class, 'getTracksByDate'])->name('admin.location.tracks');
     Route::get('/attendance/timeline', [AttendanceController::class, 'timeline'])->name('admin.attendance.timeline');
-
-
-    //new routes add
-    Route::get('/admin/leads', [LeadController::class, 'index'])->name('leads.index');
-    Route::post('/admin/leads', [LeadController::class, 'store'])->name('leads.store');
-    Route::get('/admin/leads/{lead}', [LeadController::class, 'show'])->name('leads.show');
-    Route::put('/admin/leads/{lead}', [LeadController::class, 'update'])->name('leads.update');
-    Route::delete('/admin/leads/{lead}', [LeadController::class, 'destroy'])->name('leads.destroy');
-    Route::put('/admin/leads/{lead}/status', [LeadController::class, 'updateStatus'])->name('leads.status');
-    Route::post('/admin/leads/{lead}/follow-up', [LeadController::class, 'scheduleFollowUp'])->name('leads.follow-up');
-    Route::get('/admin/leads/status/{status}', [LeadController::class, 'getLeadsByStatus'])->name('leads.by-status');
-    Route::get('/admin/leads/stats', [LeadController::class, 'getLeadStats'])->name('leads.stats');
 });
 
-require __DIR__.'/auth.php';
 
-Route::middleware(['auth'])->group(function () {
-    Route::resource('roles', RoleController::class)->names([
-        'index' => 'web.roles.index',
-        'create' => 'web.roles.create',
-        'store' => 'web.roles.store',
-        'show' => 'web.roles.show',
-        'edit' => 'web.roles.edit',
-        'update' => 'web.roles.update',
-        'destroy' => 'web.roles.destroy',
-    ]);
-    Route::resource('users', UserController::class)->names([
-        'index' => 'web.users.index',
-        'create' => 'web.users.create',
-        'store' => 'web.users.store',
-        'show' => 'web.users.show',
-        'edit' => 'web.users.edit',
-        'update' => 'web.users.update',
-        'destroy' => 'web.users.destroy',
-    ]);
 
-    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
-});
-
-Route::middleware(['auth', 'salesperson'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'salesperson'])->prefix('salesperson')->group(function () {
 
     Route::get('/salesperson-dashboard', [SalespersonDashboardController::class, 'index'])
         ->name('salesperson.dashboard');
@@ -156,8 +151,8 @@ Route::middleware(['auth', 'salesperson'])->prefix('admin')->group(function () {
     Route::get('/settings', [SettingsController::class, 'index'])->name('salesperson.settings');
 
     // Attendance
-    Route::post('/attendance/checkin', [AttendanceController::class, 'checkIn']);
-    Route::post('/attendance/checkout', [AttendanceController::class, 'checkOut']);
+    Route::post('/attendance/checkin', [AttendanceController::class, 'checkIn'])->name('salesperson.attendance.checkin');
+    Route::post('/attendance/checkout', [AttendanceController::class, 'checkOut'])->name('salesperson.attendance.checkout');
     Route::get('/attendance/status', [AttendanceController::class, 'status']);
     Route::get('/attendance/monthly-report', [AttendanceController::class, 'monthlyReport'])->name('salesperson.attendance.report');
     Route::get('/attendance/calendar-events', [AttendanceController::class, 'calendarEvents']);

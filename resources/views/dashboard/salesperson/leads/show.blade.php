@@ -1,4 +1,4 @@
-@extends('layouts.salesperson')
+@extends('layouts.app')
 
 @section('content')
 <div class="container-fluid">
@@ -238,3 +238,4 @@ document.getElementById('followUpForm').addEventListener('submit', function(e) {
 }
 </style>
 @endpush 
+@endsection
