@@ -100,22 +100,22 @@ class SalespersonDashboardController extends Controller
         $recentActivities = $this->getRecentActivities($user);
 
 
-            // Get meetings for calendar
-            $meetingsShowCalender = Meeting::where('user_id', $user->id)
-                ->where('meeting_date', '>=', $now)
-                ->get()
-                ->map(function ($meeting) {
-                    return [
-                        'id' => $meeting->id,
-                        'title' => $meeting->title,
-                        'start' => $meeting->meeting_date->format('Y-m-d H:i:s'),
-                        'end' => $meeting->meeting_date->addHour()->format('Y-m-d H:i:s'),
-                        'description' => $meeting->description,
-                        'location' => $meeting->location,
-                        'backgroundColor' => $meeting->status === 'completed' ? '#10B981' : '#3B82F6',
-                        'borderColor' => $meeting->status === 'completed' ? '#059669' : '#2563EB'
-                    ];
-                })->toArray(); // Convert to array
+        // Get meetings for calendar
+        $meetingsShowCalender = Meeting::where('user_id', $user->id)
+            ->where('meeting_date', '>=', $now)
+            ->get()
+            ->map(function ($meeting) {
+                return [
+                    'id' => $meeting->id,
+                    'title' => $meeting->title,
+                    'start' => $meeting->meeting_date->format('Y-m-d H:i:s'),
+                    'end' => $meeting->meeting_date->addHour()->format('Y-m-d H:i:s'),
+                    'description' => $meeting->description,
+                    'location' => $meeting->location,
+                    'backgroundColor' => $meeting->status === 'completed' ? '#10B981' : '#3B82F6',
+                    'borderColor' => $meeting->status === 'completed' ? '#059669' : '#2563EB'
+                ];
+            })->toArray(); // Convert to array
 
         // Get today's attendance
         $attendanceShowCalender = Attendance::where('user_id', $user->id)

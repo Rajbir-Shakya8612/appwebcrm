@@ -22,6 +22,8 @@ return new class extends Migration
             $table->string('status')->default('absent'); // present, late, absent
             $table->text('check_in_photo')->nullable();
             $table->text('check_out_photo')->nullable();
+            $table->decimal('working_hours', 5, 2)->nullable();
+            $table->text('late_reason')->nullable();
             $table->timestamps();
 
             $table->unique(['user_id', 'date']);

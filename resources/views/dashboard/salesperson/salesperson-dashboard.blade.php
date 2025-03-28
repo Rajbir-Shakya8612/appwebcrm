@@ -15,8 +15,11 @@
                 <div class="info-card check-in-card shadow-sm text-center p-3">
                     <p class="small fw-semibold text-dark">Check In Time</p>
                     <p class="h5 fw-bold text-dark" id="checkInTime">
-                        {{ $attendance->check_in_time ? \Carbon\Carbon::parse($attendance->check_in_time)->format('h:i A') : '--:--' }}
+                          {{ $attendance->check_in_time ? \Carbon\Carbon::parse($attendance->check_in_time)->format('h:i A') : '--:--' }}
                     </p>
+                    @if($attendance && $attendance->status === 'late')
+                        <span class="badge bg-warning text-dark">Late</span>
+                    @endif
                 </div>
             </div>
 
@@ -51,8 +54,9 @@
                 <div class="info-card location-card shadow-sm text-center p-3">
                     <p class="small fw-semibold text-dark">Current Location</p>
                     <p class="h6 text-dark fw-bold" id="currentLocation">
-                        Latitude: 29.3726381 <br> Longitude: 75.4111531
+                        Loading location...
                     </p>
+                    <div id="locationMap" style="height: 200px; width: 100%; margin-top: 10px;"></div>
                 </div>
             </div>
         </div>
@@ -68,6 +72,30 @@
                     <i class="fas fa-sign-out-alt me-2"></i> Check Out
                 </button>
             @endif
+        </div>
+
+        <!-- Late Reason Modal -->
+        <div class="modal fade" id="lateReasonModal" tabindex="-1" aria-labelledby="lateReasonModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="lateReasonModalLabel">Late Attendance Reason</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="lateReasonForm">
+                            <div class="mb-3">
+                                <label for="lateReason" class="form-label">Please provide reason for being late</label>
+                                <textarea class="form-control" id="lateReason" rows="3" required></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="submitLateReason()">Submit</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -306,158 +334,49 @@
 
     @push('scripts')
         <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+        <script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google.maps_api_key') }}"></script>
         <script>
-            function openModal(modalId) {
-                var modal = new bootstrap.Modal(document.getElementById(modalId));
-                modal.show();
+            let map;
+            let marker;
+            let locationUpdateInterval;
+
+            // Initialize map
+            function initMap() {
+                map = new google.maps.Map(document.getElementById('locationMap'), {
+                    zoom: 15,
+                    center: { lat: 0, lng: 0 }
+                });
+                marker = new google.maps.Marker({
+                    map: map,
+                    position: { lat: 0, lng: 0 }
+                });
             }
 
-            function closeModal(modalId) {
-                var modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
-                modal.hide();
+            // Update location
+            function updateLocation(position) {
+                const { latitude, longitude } = position.coords;
+                const location = { lat: latitude, lng: longitude };
+                
+                map.setCenter(location);
+                marker.setPosition(location);
+                
+                // Update location display
+                document.getElementById('currentLocation').textContent = 
+                    `Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`;
             }
 
-            document.getElementById('addLeadForm').addEventListener('submit', function(event) {
-                event.preventDefault();
-                alert('Lead Added Successfully!');
-                closeModal('leadModal');
-                this.reset();
-            });
-
-            document.getElementById('addTaskForm').addEventListener('submit', function(event) {
-                event.preventDefault();
-                alert('Task Added Successfully!');
-                closeModal('taskModal');
-                this.reset();
-            });
-            document.addEventListener('DOMContentLoaded', function() {
-                // Initialize location tracking
+            // Start location tracking
+            function startLocationTracking() {
                 if ("geolocation" in navigator) {
-                    navigator.geolocation.watchPosition(function(position) {
-                        const latitude = position.coords.latitude;
-                        const longitude = position.coords.longitude;
-
-                        // Update location display
-                        document.getElementById('currentLocation').textContent =
-                            `Latitude: ${latitude}, Longitude: ${longitude}`;
-
-                        // Store location in database
-                        $.ajax({
-                            url: '/location/today-tracks',
-                            method: 'POST',
-                            data: {
-                                latitude: latitude,
-                                longitude: longitude,
-                                _token: '{{ csrf_token() }}'
-                            }
-                        });
+                    navigator.geolocation.watchPosition(updateLocation, null, {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
                     });
                 }
+            }
 
-                // Add Lead Form Submission
-                $('#addLeadForm').on('submit', function(e) {
-                    e.preventDefault();
-                    $.ajax({
-                        url: '/leads',
-                        method: 'POST',
-                        data: $(this).serialize() + '&_token={{ csrf_token() }}',
-                        success: function(response) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Success!',
-                                text: 'Lead added successfully',
-                                timer: 1500,
-                                showConfirmButton: false
-                            });
-                            $('#addLeadForm')[0].reset();
-                            location.reload();
-                        },
-                        error: function(xhr) {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error!',
-                                text: 'Failed to add lead'
-                            });
-                        }
-                    });
-                });
-
-                // Add Task Form Submission
-                $('#addTaskForm').on('submit', function(e) {
-                    e.preventDefault();
-                    $.ajax({
-                        url: '/tasks',
-                        method: 'POST',
-                        data: $(this).serialize() + '&_token={{ csrf_token() }}',
-                        success: function(response) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Success!',
-                                text: 'Task added successfully',
-                                timer: 1500,
-                                showConfirmButton: false
-                            });
-                            $('#addTaskForm')[0].reset();
-                            location.reload();
-                        },
-                        error: function(xhr) {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error!',
-                                text: 'Failed to add task'
-                            });
-                        }
-                    });
-                });
-
-                // Initialize Dragula
-                const containers = document.querySelectorAll('[id^="status-"]');
-                dragula(containers, {
-                    moves: function(el) {
-                        return el.classList.contains('cursor-move');
-                    },
-                    accepts: function(el, target) {
-                        return target.id !== el.parentNode.id;
-                    },
-                    direction: 'horizontal',
-                    revertOnSpill: true
-                }).on('drop', function(el, target) {
-                    const leadId = el.dataset.leadId;
-                    const newStatusId = target.id.replace('status-', '');
-
-                    // Update lead status via AJAX
-                    $.ajax({
-                        url: `/leads/${leadId}/status`,
-                        method: 'PUT',
-                        data: {
-                            status_id: newStatusId,
-                            _token: '{{ csrf_token() }}'
-                        },
-                        success: function(response) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Success!',
-                                text: 'Lead status updated successfully',
-                                timer: 1500,
-                                showConfirmButton: false
-                            });
-                        },
-                        error: function(xhr) {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error!',
-                                text: 'Failed to update lead status'
-                            });
-                        }
-                    });
-                });
-
-                // calendar show data
-
-
-            });
-
-            // Attendance Functions
+            // Check in function
             function checkIn() {
                 if ("geolocation" in navigator) {
                     navigator.geolocation.getCurrentPosition(function(position) {
@@ -467,11 +386,15 @@
                             data: {
                                 latitude: position.coords.latitude,
                                 longitude: position.coords.longitude,
-                                _token: $('meta[name="csrf-token"]').attr('content')
+                                address: 'Current Location', // You can use reverse geocoding here
+                                _token: '{{ csrf_token() }}'
                             },
                             success: function(response) {
                                 if (response.success) {
                                     document.getElementById('checkInTime').textContent = response.time;
+                                    if (response.status === 'late') {
+                                        showLateReasonModal();
+                                    }
                                     Swal.fire({
                                         icon: 'success',
                                         title: 'Success!',
@@ -500,6 +423,7 @@
                 }
             }
 
+            // Check out function
             function checkOut() {
                 if ("geolocation" in navigator) {
                     navigator.geolocation.getCurrentPosition(function(position) {
@@ -509,7 +433,8 @@
                             data: {
                                 latitude: position.coords.latitude,
                                 longitude: position.coords.longitude,
-                                _token: $('meta[name="csrf-token"]').attr('content')
+                                address: 'Current Location', // You can use reverse geocoding here
+                                _token: '{{ csrf_token() }}'
                             },
                             success: function(response) {
                                 if (response.success) {
@@ -542,147 +467,129 @@
                 }
             }
 
-            // Task Management Functions
-            function updateTaskStatus(taskId) {
+            // Show late reason modal
+            function showLateReasonModal() {
+                const modal = new bootstrap.Modal(document.getElementById('lateReasonModal'));
+                modal.show();
+            }
+
+            // Submit late reason
+            function submitLateReason() {
+                const reason = document.getElementById('lateReason').value;
+                if (!reason) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: 'Please provide a reason for being late'
+                    });
+                    return;
+                }
+
                 $.ajax({
-                    url: `/tasks/${taskId}/status`,
+                    url: '/salesperson/attendance/late-reason',
+                    method: 'POST',
+                    data: {
+                        reason: reason,
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('lateReasonModal'));
+                            modal.hide();
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: 'Late reason submitted successfully',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error!',
+                            text: 'Failed to submit late reason'
+                        });
+                    }
+                });
+            }
+
+            // Initialize when document is ready
+            document.addEventListener('DOMContentLoaded', function() {
+                initMap();
+                startLocationTracking();
+            });
+
+            function openModal(modalId) {
+                var modal = new bootstrap.Modal(document.getElementById(modalId));
+                modal.show();
+            }
+
+            function closeModal(modalId) {
+                var modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
+                modal.hide();
+            }
+
+            document.getElementById('addLeadForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+                alert('Lead Added Successfully!');
+                closeModal('leadModal');
+                this.reset();
+            });
+
+            document.getElementById('addTaskForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+                alert('Task Added Successfully!');
+                closeModal('taskModal');
+                this.reset();
+            });
+
+            // Initialize Dragula
+            const containers = document.querySelectorAll('[id^="status-"]');
+            dragula(containers, {
+                moves: function(el) {
+                    return el.classList.contains('cursor-move');
+                },
+                accepts: function(el, target) {
+                    return target.id !== el.parentNode.id;
+                },
+                direction: 'horizontal',
+                revertOnSpill: true
+            }).on('drop', function(el, target) {
+                const leadId = el.dataset.leadId;
+                const newStatusId = target.id.replace('status-', '');
+
+                // Update lead status via AJAX
+                $.ajax({
+                    url: `/leads/${leadId}/status`,
                     method: 'PUT',
                     data: {
-                        status: 'completed',
+                        status_id: newStatusId,
                         _token: '{{ csrf_token() }}'
                     },
                     success: function(response) {
                         Swal.fire({
                             icon: 'success',
                             title: 'Success!',
-                            text: 'Task marked as completed',
+                            text: 'Lead status updated successfully',
                             timer: 1500,
                             showConfirmButton: false
                         });
-                        location.reload();
                     },
                     error: function(xhr) {
                         Swal.fire({
                             icon: 'error',
                             title: 'Error!',
-                            text: 'Failed to update task status'
+                            text: 'Failed to update lead status'
                         });
                     }
                 });
-            }
+            });
 
-            function deleteTask(taskId) {
-                Swal.fire({
-                    title: 'Are you sure?',
-                    text: "You won't be able to revert this!",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#3085d6',
-                    cancelButtonColor: '#d33',
-                    confirmButtonText: 'Yes, delete it!'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        $.ajax({
-                            url: `/tasks/${taskId}`,
-                            method: 'DELETE',
-                            data: {
-                                _token: '{{ csrf_token() }}'
-                            },
-                            success: function(response) {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Deleted!',
-                                    text: 'Task has been deleted.',
-                                    timer: 1500,
-                                    showConfirmButton: false
-                                });
-                                location.reload();
-                            },
-                            error: function(xhr) {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Error!',
-                                    text: 'Failed to delete task'
-                                });
-                            }
-                        });
-                    }
-                });
-            }
+            // calendar show data
 
-            // Lead Management Functions
-            function editLead(leadId) {
-                // Implement lead editing functionality
-                Swal.fire({
-                    title: 'Edit Lead',
-                    html: `
-                        <form id="editLeadForm" class="space-y-4">
-                            <div>
-                                <label class="form-label">Name</label>
-                                <input type="text" class="form-control" required>
-                            </div>
-                            <div>
-                                <label class="form-label">Phone</label>
-                                <input type="tel" class="form-control">
-                            </div>
-                            <div>
-                                <label class="form-label">Email</label>
-                                <input type="email" class="form-control">
-                            </div>
-                            <div>
-                                <label class="form-label">Description</label>
-                                <textarea class="form-control"></textarea>
-                            </div>
-                        </form>
-                    `,
-                    showCancelButton: true,
-                    confirmButtonText: 'Save Changes',
-                    cancelButtonText: 'Cancel',
-                    preConfirm: () => {
-                        // Implement save functionality
-                        return true;
-                    }
-                });
-            }
 
-            function deleteLead(leadId) {
-                Swal.fire({
-                    title: 'Are you sure?',
-                    text: "You won't be able to revert this!",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#3085d6',
-                    cancelButtonColor: '#d33',
-                    confirmButtonText: 'Yes, delete it!'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        $.ajax({
-                            url: `/leads/${leadId}`,
-                            method: 'DELETE',
-                            data: {
-                                _token: '{{ csrf_token() }}'
-                            },
-                            success: function(response) {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Deleted!',
-                                    text: 'Lead has been deleted.',
-                                    timer: 1500,
-                                    showConfirmButton: false
-                                });
-                                $(`[data-lead-id="${leadId}"]`).remove();
-                            },
-                            error: function(xhr) {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Error!',
-                                    text: 'Failed to delete lead'
-                                });
-                            }
-                        });
-                    }
-                });
-            }
         </script>
     @endpush
 @endsection

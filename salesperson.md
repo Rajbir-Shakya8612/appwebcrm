@@ -35,7 +35,7 @@ new leads ka message ka notificatons bhi jaaye jis salesperson ne kiya hai or ad
 
 sabse phle salesperson ke attandance ko complete krna hai main focus yhi hai web ke liye website ko view pr bhi dikhayega bilkul real time data ajax se kr skte hai
 iska dhyan rakhe jo aapko dashboard dikha rakha hai view / dashboard / salesperson / salesperson-dashboard.blade.php
-and editpipline.blade.php se aesa krna hai or behatar achha krna hai proper crm system banana hai mujhe 
+se aesa krna hai or behatar achha krna hai proper crm system banana hai mujhe 
 
 1. jb tk attandance na lagaye mtlb salesperson present na ho uss din to wo new lead or new expenses add na kr ske
 2. per person ka duty time rahega 9.30AM se 7.30PM uske baaad hamesha late mark hoga jb 9.30AM ke baad aayega to
