@@ -18,10 +18,15 @@ class Lead extends Model
         'email',
         'phone',
         'company',
-        'description',
+        'address',
+        'pincode',
+        'status', 
+        'notes',
+        'expected_amount',
+        'follow_up_date',
         'source',
-        'expected_value',
-        'notes'
+        'location',
+        'additional_info',
     ];
 
     protected $casts = [

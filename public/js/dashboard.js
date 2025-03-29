@@ -107,47 +107,58 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Edit lead function
 function editLead(leadId) {
-    $.get(`/salesperson/leads/${leadId}`, function(lead) {
+    $.get(`/salesperson/leads/${leadId}`, function (lead) {
         Swal.fire({
+            width: '700px',
             title: 'Edit Lead',
+            customClass: {
+                popup: 'swal-wide'
+            },
             html: `
                 <form id="editLeadForm" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Name</label>
-                        <input type="text" name="name" value="${lead.name}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
+                    <input type="hidden" name="lead_id" id="lead_id" value="${lead.id}">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">Name</label>
+                            <input type="text" name="name" id="name" value="${lead.name}" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">Phone</label>
+                            <input type="tel" name="phone" id="phone" value="${lead.phone}" class="form-control" required>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Phone</label>
-                        <input type="tel" name="phone" value="${lead.phone}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" name="email" id="email" value="${lead.email}" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="company" class="form-label">Company</label>
+                            <input type="text" name="company" id="company" value="${lead.company}" class="form-control" required>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Email</label>
-                        <input type="email" name="email" value="${lead.email}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="source" class="form-label">Source</label>
+                            <select name="source" id="source" class="form-select" required>
+                                <option value="website" ${lead.source === 'website' ? 'selected' : ''}>Website</option>
+                                <option value="referral" ${lead.source === 'referral' ? 'selected' : ''}>Referral</option>
+                                <option value="social" ${lead.source === 'social' ? 'selected' : ''}>Social Media</option>
+                                <option value="other" ${lead.source === 'other' ? 'selected' : ''}>Other</option>
+                            </select>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Company</label>
-                        <input type="text" name="company" value="${lead.company}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea name="description" id="description" class="form-control" required>${lead.notes || ''}</textarea>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Description</label>
-                        <textarea name="description" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required>${lead.description}</textarea>
+                    <div class="mb-3">
+                        <label for="expected_amount" class="form-label">Expected Amount</label>
+                        <input type="number" name="expected_amount" id="expected_amount" value="${lead.expected_amount}" class="form-control" required>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Source</label>
-                        <select name="source" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
-                            <option value="website" ${lead.source === 'website' ? 'selected' : ''}>Website</option>
-                            <option value="referral" ${lead.source === 'referral' ? 'selected' : ''}>Referral</option>
-                            <option value="social" ${lead.source === 'social' ? 'selected' : ''}>Social Media</option>
-                            <option value="other" ${lead.source === 'other' ? 'selected' : ''}>Other</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Expected Value</label>
-                        <input type="number" name="expected_value" value="${lead.expected_value}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Notes</label>
-                        <textarea name="notes" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">${lead.notes || ''}</textarea>
+                    <div class="mb-3">
+                        <label for="status_id" class="form-label">Status ID</label>
+                        <input type="hidden" name="status_id" id="status_id" value="${lead.status_id}">
                     </div>
                 </form>
             `,
@@ -157,7 +168,7 @@ function editLead(leadId) {
             preConfirm: () => {
                 const form = document.getElementById('editLeadForm');
                 const formData = new FormData(form);
-                
+
                 return $.ajax({
                     url: `/salesperson/leads/${leadId}`,
                     method: 'PUT',
@@ -167,6 +178,11 @@ function editLead(leadId) {
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     }
+                }).then(response => {
+                    if (!response.success) {
+                        throw new Error(response.message || 'Failed to update lead');
+                    }
+                    return response;
                 });
             }
         }).then((result) => {
@@ -181,10 +197,21 @@ function editLead(leadId) {
                 // Refresh the page to show the updated lead
                 window.location.reload();
             }
+        }).catch(error => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error!',
+                text: error.message || 'Failed to update lead. Please try again.'
+            });
+        });
+    }).fail(function () {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error!',
+            text: 'Failed to load lead data. Please try again.'
         });
     });
 }
-
 // Delete lead function
 function deleteLead(leadId) {
     Swal.fire({

@@ -165,3 +165,543 @@ UI/UX design achha hona chahiye jisse dekh kr achha lge professional lge kanban,
                 </div>
             </div>
         </div>
+
+
+
+========== new task ======
+isme mene phle se kuch method migrations model or logics controller main bana rakhe hai with routes phle check kr le unhe jisme kmi ho unhe theek kre blade file main ho to usse baaki jahan bhi ho wahan kmi theek kr de 
+
+
+1. locations trackking table main data kese jayega phle to ye shi kre kyunki attandance lgne ke sath jaani chahiye post usi ki to locations tracks krege admin
+iske commands console bhi bana rakha hai check kr le shi se work kre ye bhi
+
+2. check in or check out ki request kaafi der main jaati hai wo real time work krni chahiye ki user ne click kiya or attrandace lg jaye sath ke sath hi check out kre to wo bhi sath ke sath hi ho jaaye
+sweet alert main to check in or check out krne pr error dikhata hai jo ki niche mene diya hai lekin request chali bhi jaati hai success bhi ho jaati hai data bhi database main proper save ho jata hia isse bhi check kre aesa kyu hota hai
+
+Error!
+Failed to check out
+
+3. sath main new lead add or edit ka bhi dekh lena salesperson ki side main ki dashboard se new lead add kr ske edit bhi or sath main wo calender main bhi dikhe jb click kre to popup main wo leads ki details dikhe aese krna hai usme
+4, salesperson ko uski total leads ka or attandance ka graph dikhe dashboard pr dono 
+5. task bhi add kr ske aap uski migrations model controller main method check kr le with routes or dashboard se task ko whi informations ko add krwaye jo model migrations main hai
+6. Whatsapp sms jaaye attandance with status, lead task, sales task 
+7. sales force main target diya tha salesperson ke siniors ne mothly, weekly, quarterly, Yealy wo bhi dikhe
+8. jese hi month ki 1 tarik aaye plan lena hai ki iss month kya krege wo bhi salesperson daal ske apna plan
+    - lead plans, sales plan ka target denge -> option dene honge target diya tha mothly, weekly, quarterly, Yealy
+9. Meeting ka option -> reminder date pr
+    - reminder date nikal jaaye to uska status pending main rahega ne delete kr skta hai
+
+
+plan aese dekha salesperson
+
+id	1
+user_id	1
+start_date	2025-03-28 23:01:56
+end_date	2025-04-27 23:01:56
+month	3
+year	2025
+type	monthly
+lead_target	100
+sales_target	50000.50
+description	March Sales Plan
+status	active
+achievements	"{\"leads\":20,\"sales\":10000}"
+notes	Initial plan for March
+created_at	2025-03-28 23:01:56
+updated_at	2025-03-28 23:01:56
+
+aese data save hoga wo
+
+
+card move js code old
+
+            // Initialize Dragula
+            const containers = document.querySelectorAll('[id^="status-"]');
+            dragula(containers, {
+                moves: function(el) {
+                    return el.classList.contains('cursor-move');
+                },
+                accepts: function(el, target) {
+                    return target.id !== el.parentNode.id;
+                },
+                direction: 'horizontal',
+                revertOnSpill: true
+            }).on('drop', function(el, target) {
+                const leadId = el.dataset.leadId;
+                const newStatusId = target.id.replace('status-', '');
+
+                // Update lead status via AJAX
+                $.ajax({
+                    url: `/leads/${leadId}/status`,
+                    method: 'PUT',
+                    data: {
+                        status_id: newStatusId,
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: 'Lead status updated successfully',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    },
+                    error: function(xhr) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error!',
+                            text: 'Failed to update lead status'
+                        });
+                    }
+                });
+            });
+
+card move js code old close
+
+
+    ========= admin ke liye important =========
+
+1. salesperson side se locations tracking ko hta kr uske routes ke sath admin side krne hai testing ke baad
+2. salesperson side jo bhi testing ke liye rakh rakha hai admin ka baad main hide krna hai
+3. salesperson dashboard ka code dashboard.js main hai shi se wo usme krna hai salesperson-dashboard pe jo js hai wo shi krni hai
+
+
+
+
+
+
+
+
+
+
+
+
+current task
+
+mere kehne ka mtlb ye hai ki jese hi lead update or store hoti hai to kanban ke card main bhi real time update ho jaaye wo kese hoga usse krna hai
+
+    <!-- Kanban Board -->
+        <div class="bg-white rounded shadow mt-4">
+            <div class="p-4 border-bottom">
+                <h3 class="h6">Lead Pipeline</h3>
+
+                <div class="d-flex">
+                    <button onclick="openLeadModal()" class="btn btn-primary me-2">
+                        + Add New Lead
+                    </button>
+                    <button onclick="openModal()" class="btn btn-success">
+                        + Add New Task
+                    </button>
+                </div>
+            </div>
+            <div class="p-4">
+                <div class="d-flex overflow-auto">
+                    @foreach ($leadStatuses as $status)
+                        <div class="flex-shrink-0 me-3" style="width: 300px;">
+                            <div class="bg-light rounded p-3">
+                                <h4 class="small text-muted mb-3">{{ $status->name }}</h4>
+                                <div class="mb-3" id="status-{{ $status->id }}">
+                                    @foreach ($status->leads as $lead)
+                                        <div class="bg-white rounded shadow p-3 mb-2 cursor-move"
+                                            data-lead-id="{{ $lead->id }}">
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <h5 class="font-weight-bold text-dark">{{ $lead->name }}</h5>
+                                                <span
+                                                    class="small text-muted">{{ $lead->created_at->format('M d, Y') }}</span>
+                                            </div>
+                                            <p class="small text-muted mb-3">{{ Str::limit($lead->description, 100) }}</p>
+                                            <div class="d-flex justify-content-between">
+                                                <div class="d-flex align-items-center">
+                                                    <a href="tel:{{ $lead->phone }}" class="text-primary me-2">
+                                                        <i class="fas fa-phone"></i>
+                                                    </a>
+                                                    <a href="mailto:{{ $lead->email }}" class="text-success me-2">
+                                                        <i class="fas fa-envelope"></i>
+                                                    </a>
+                                                    <a href="https://wa.me/{{ $lead->phone }}" target="_blank"
+                                                        class="text-success">
+                                                        <i class="fab fa-whatsapp"></i>
+                                                    </a>
+                                                </div>
+                                                <div class="d-flex align-items-center">
+                                                    <button onclick="openLeadModal({{ $lead->id }})"
+                                                        class="text-primary me-2">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button onclick="deleteLead({{ $lead->id }})"
+                                                        class="text-danger">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
+
+isme isse kre or cart ke top pr jahan pr status dikh rha hai  <h4 class="small text-muted mb-3">{{ $status->name }}</h4>  iske bilkul samne right side main uss card main kitni lead hai total wo bhi dikhe aese krna hai
+
+
+            // lead open management
+            function openLeadModal(leadId = null) {
+                const modal = document.getElementById('leadModal');
+                const form = document.getElementById('addLeadForm');
+                const modalTitle = document.getElementById('leadModalLabel');
+                const leadIdField = document.getElementById('lead_id');
+
+                if (leadId) {
+                    // Edit mode
+                    modalTitle.textContent = 'Edit Lead';
+                    fetch(`/salesperson/leads/${leadId}`)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok: ' + response.statusText);
+                            }
+                            return response.json();
+                        })
+                        .then(lead => {
+                            form.name.value = lead.name;
+                            form.phone.value = lead.phone;
+                            form.email.value = lead.email;
+                            form.company.value = lead.company;
+                            form.description.value = lead.additional_info;
+                            form.source.value = lead.source;
+                            form.expected_amount.value = lead.expected_amount;
+                            form.notes.value = lead.notes;
+                            form.status.value = lead.status_id; // Status update
+
+                            form.dataset.leadId = leadId;
+                            leadIdField.value = leadId;
+                        })
+                        .catch(error => {
+                            console.error('Error fetching lead:', error);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error!',
+                                text: 'Failed to load lead data. Please try again.'
+                            });
+                        });
+                } else {
+                    // Create mode
+                    modalTitle.textContent = 'Add New Lead';
+                    form.reset(); // Reset the form for new lead
+                    delete form.dataset.leadId; // Ensure the lead ID is removed
+                }
+
+                new bootstrap.Modal(modal).show();
+            }
+
+
+
+            function submitLeadForm(event) {
+                event.preventDefault();
+                const form = event.target;
+                const leadId = form.dataset.leadId;
+                const url = leadId ? `/salesperson/leads/${leadId}` : '/salesperson/leads';
+                const method = leadId ? 'PUT' : 'POST';
+
+                const formData = new FormData(form);
+                const data = Object.fromEntries(formData.entries());
+
+                // Add CSRF token
+                data._token = '{{ csrf_token() }}';
+
+                fetch(url, {
+                        method: method,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify(data)
+                    })
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: result.message,
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                            location.reload();
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error!',
+                                text: result.message || 'Failed to save lead'
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error!',
+                            text: 'Failed to save lead. Please try again.'
+                        });
+                    });
+
+            }
+
+            function deleteLead(leadId) {
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: "You won't be able to revert this!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes, delete it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        axios.delete(`/salesperson/leads/${leadId}`, {
+                            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+                        }).then(response => {
+                            if (response.data.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Deleted!',
+                                    text: response.data.message,
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                });
+                                document.getElementById(`lead-row-${leadId}`).remove(); // Table se row hatao
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error!',
+                                    text: response.data.message || 'Failed to delete lead'
+                                });
+                            }
+                        }).catch(error => {
+                            console.error('Error:', error);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error!',
+                                text: 'Failed to delete lead. Please try again.'
+                            });
+                        });
+                    }
+                });
+            }
+
+
+
+                // Lead Form Submission
+            document.getElementById('addLeadForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+
+                let form = this;
+                let leadId = document.getElementById('lead_id').value;
+                let url = leadId ? `/salesperson/leads/${leadId}` : '/salesperson/leads';
+                let method = leadId ? 'put' : 'post';
+
+                let formData = new FormData(form);
+                let data = Object.fromEntries(formData.entries());
+
+                axios({
+                    method: method,
+                    url: url,
+                    data: data,
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                }).then(response => {
+                    if (response.data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: response.data.message,
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                        $('#leadModal').modal('hide'); // Modal close karo
+                        updateLeadTable(response.data.lead); // Table update karo
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error!',
+                            text: response.data.message || 'Failed to save lead'
+                        });
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: 'Failed to save lead. Please try again.'
+                    });
+                });
+            });
+
+
+ab kre isse shi se
+
+   /**
+     * Store a newly created lead.
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'phone' => 'required|string|max:20',
+            'company' => 'required|string|max:255',
+            'description' => 'required|string',
+            'source' => 'required|string|max:255',
+            'expected_value' => 'required|numeric|min:0',
+            'notes' => 'nullable|string'
+        ]);
+
+        $lead = Lead::create([
+            'user_id' => Auth::id(),
+            'status_id' => LeadStatus::where('slug', 'new')->first()->id,
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'company' => $request->company,
+            'notes' => $request->description,
+            'source' => $request->source,
+            'expected_amount' => $request->expected_value,
+            'notes' => $request->notes
+        ]);
+        
+        $user = Auth::user();
+        $today = now()->toDateString();
+
+        // Check if the user has marked attendance today
+        $todayAttendance = Attendance::where('user_id', $user->id)
+            ->whereDate('date', $today)
+            ->exists();
+
+        if (!$todayAttendance) {
+            return response()->json([
+                'success' => false,
+                'message' => 'आप आज की अटेंडेंस लगाए बिना नई लीड नहीं जोड़ सकते।'
+            ], 403);
+        }
+        // Create initial activity
+        $lead->createActivity(
+            'Lead Created',
+            'Lead was added to the system',
+            Auth::user()
+        );
+
+        // Send WhatsApp notification to admin
+        $admin = User::whereHas('role', function($query) {
+            $query->where('name', 'admin');
+        })->first();
+
+        if ($admin) {
+            $this->whatsappService->sendNewLeadNotification($admin, $lead);
+        }
+
+        // Check if the request is an AJAX request
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Lead created successfully',
+                'lead' => $lead
+            ]);
+        }
+
+        // Fallback for non-AJAX requests
+        return redirect()->back()->with('success', 'Lead created successfully');
+    }
+
+    /**
+     * Display the specified lead.
+     */
+    public function show(Lead $lead)
+    {
+        $this->authorize('view', $lead);
+        return response()->json($lead);
+    }
+
+    /**
+     * Update the specified lead.
+     */
+    public function update(Request $request, Lead $lead)
+    {
+        $this->authorize('update', $lead);
+
+        $validatedData = $request->validate([
+            'lead_id' => 'required|exists:leads,id',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'phone' => 'required|string|max:20',
+            'company' => 'required|string|max:255',
+            'description' => 'required|string',
+            'source' => 'required|string|max:255',
+            'expected_value' => 'required|numeric|min:0',
+            'notes' => 'nullable|string'
+        ]);
+
+
+        $user = Auth::user();
+        $today = now()->toDateString();
+
+        // Check if the user has marked attendance today
+        $todayAttendance = Attendance::where('user_id', $user->id)
+            ->whereDate('date', $today)
+            ->exists();
+
+        if (!$todayAttendance) {
+            return response()->json([
+                'success' => false,
+                'message' => 'आप आज की अटेंडेंस लगाए बिना नई लीड नहीं अपडेट कर सकते।'
+            ], 403);
+        }
+
+        if ($lead->id != $request->lead_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid lead ID.'
+            ], 403);
+        }
+
+        $lead->update($validatedData);
+
+        // Create activity for the update
+        $lead->createActivity(
+            'Lead Updated',
+            'Lead information was updated',
+            Auth::user()
+        );
+
+        // If status changed to converted, send notification
+        if ($lead->wasChanged('status') && $lead->status === 'converted') {
+            $this->whatsappService->sendLeadConversionNotification($lead->user, $lead);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lead updated successfully',
+            'lead' => $lead
+        ]);
+    }
+
+
+ // Leads
+    Route::post('/leads', [LeadController::class, 'store'])->name('salesperson.leads.store');
+    Route::get('/leads/{lead}', [LeadController::class, 'show'])->name('salesperson.leads.show');
+    Route::put('/leads/{lead}', [LeadController::class, 'update'])->name('salesperson.leads.update');
+    Route::delete('/leads/{lead}', [LeadController::class, 'destroy'])->name('salesperson.leads.destroy');
+    Route::put('/leads/{lead}/status', [LeadController::class, 'updateStatus'])->name('salesperson.leads.status');
+    Route::get('/leads/status/{status}', [LeadController::class, 'getLeadsByStatus'])->name('salesperson.leads.by-status');
+    Route::get('/leads/stats', [LeadController::class, 'getLeadStats'])->name('salesperson.leads.stats');
+
+iss wale ko kre bina websoket ke 
+bina websocket or pusher ke kre isse taaki shi se chal ske kyunki sbmit hokar response to aata hi hai to wahan data dikh jaaye sath ke sath hi aese bhi to ho skta hai isse or tarike se kre
+
+
+
+kya aap kanban ka design thoda improve krke professional kr skte ho jisse wo or behtarin ban jaaye with colorfull bootstrap5 + css +js se or card ko swap kre to uska status bhi update ho ske shi se

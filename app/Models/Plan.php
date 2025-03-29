@@ -13,6 +13,8 @@ class Plan extends Model
     protected $fillable = [
         'user_id',
         'month',
+        'start_date',
+        'end_date',
         'year',
         'type', // monthly, quarterly, yearly
         'lead_target',
@@ -24,6 +26,8 @@ class Plan extends Model
     ];
 
     protected $casts = [
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
         'month' => 'integer',
         'year' => 'integer',
         'lead_target' => 'integer',

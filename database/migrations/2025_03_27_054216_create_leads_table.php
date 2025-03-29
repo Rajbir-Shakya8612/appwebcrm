@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('leads', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id'); // User who owns the lead
+            $table->foreignId('status_id')->nullable()->constrained('lead_statuses')->onDelete('cascade');
             $table->string('name');
             $table->string('phone')->nullable();
             $table->string('email')->unique()->nullable();
@@ -26,6 +27,7 @@ return new class extends Migration
             $table->string('source')->nullable();
             $table->string('location')->nullable();
             $table->json('additional_info')->nullable(); // JSON column for extra details
+            $table->string('company')->nullable();
             
             // Foreign Key Constraint
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');

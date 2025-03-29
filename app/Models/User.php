@@ -250,6 +250,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get user's leaves
+     */
+    public function leaves(): HasMany
+    {
+        return $this->hasMany(Leave::class);
+    }
+
+    /**
      * Get user's plans
      */
     public function plans(): HasMany
@@ -258,39 +266,38 @@ class User extends Authenticatable
     }
 
     /**
-     * Get user's current month plan
+     * Get current month's plan
      */
     public function getCurrentMonthPlan()
     {
-        $now = now();
         return $this->plans()
-            ->where('month', $now->month)
-            ->where('year', $now->year)
+            ->where('type', 'monthly')
+            ->where('start_date', '<=', now())
+            ->where('end_date', '>=', now())
             ->first();
     }
 
     /**
-     * Get user's quarterly plan
+     * Get current quarter's plan
      */
     public function getCurrentQuarterPlan()
     {
-        $now = now();
-        $quarter = ceil($now->month / 3);
         return $this->plans()
-            ->where('year', $now->year)
             ->where('type', 'quarterly')
-            ->whereIn('month', [($quarter - 1) * 3 + 1, ($quarter - 1) * 3 + 2, ($quarter - 1) * 3 + 3])
-            ->get();
+            ->where('start_date', '<=', now())
+            ->where('end_date', '>=', now())
+            ->first();
     }
 
     /**
-     * Get user's yearly plan
+     * Get current year's plan
      */
     public function getCurrentYearPlan()
     {
         return $this->plans()
-            ->where('year', now()->year)
             ->where('type', 'yearly')
+            ->where('start_date', '<=', now())
+            ->where('end_date', '>=', now())
             ->first();
     }
 

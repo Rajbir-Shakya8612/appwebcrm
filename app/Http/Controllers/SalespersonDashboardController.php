@@ -11,6 +11,7 @@ use App\Models\Meeting;
 use App\Models\LeadStatus;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Leave;
 
 class SalespersonDashboardController extends Controller
 {
@@ -32,7 +33,6 @@ class SalespersonDashboardController extends Controller
             ->whereMonth('created_at', now()->subMonth())
             ->count();
         $leadChange = $lastMonthLeads > 0 ? (($monthlyLeads - $lastMonthLeads) / $lastMonthLeads) * 100 : 0;
-
 
         // Get monthly sales
         $monthlySales = Sale::where('user_id', $user->id)
@@ -59,39 +59,112 @@ class SalespersonDashboardController extends Controller
             $query->where('user_id', $user->id)
                 ->orderBy('created_at', 'desc');
         }])->get();
-        
-        // Get meetings for calendar
-        $meetings = Meeting::where('user_id', $user->id)
-            ->where('meeting_date', '>=', $now)
-            ->get()
-            ->map(function($meeting) {
-                return [
-                    'id' => $meeting->id,
-                    'title' => $meeting->title,
-                    'start' => $meeting->meeting_date->format('Y-m-d H:i:s'),
-                    'end' => $meeting->meeting_date->addHour()->format('Y-m-d H:i:s'),
-                    'description' => $meeting->description,
-                    'location' => $meeting->location,
-                    'backgroundColor' => $meeting->status === 'completed' ? '#10B981' : '#3B82F6',
-                    'borderColor' => $meeting->status === 'completed' ? '#059669' : '#2563EB'
-                ];
-            });
-
-        $todayMeetings = Meeting::where('user_id', $user->id)
-            ->whereDate('meeting_date', $now)
-            ->count();
-
-
-        // Get today's attendance
-        $attendance = Attendance::where('user_id', $user->id)
-            ->whereDate('date', $now->toDateString())
-            ->first();
 
         // Get user's tasks
         $tasks = Task::where('assignee_id', $user->id)
             ->where('status', '!=', 'completed')
             ->orderBy('due_date', 'asc')
             ->get();
+
+        // Get meetings for calendar
+        $meetings = Meeting::where('user_id', $user->id)
+            ->where('meeting_date', '>=', $now)
+            ->get()
+            ->map(function($meeting) {
+                return [
+                    'id' => "meeting-{$meeting->id}",
+                    'title' => $meeting->title,
+                    'start' => $meeting->meeting_date->format('Y-m-d H:i:s'),
+                    'end' => $meeting->meeting_date->addHour()->format('Y-m-d H:i:s'),
+                    'description' => $meeting->description,
+                    'location' => $meeting->location,
+                    'status' => $meeting->status,
+                    'attendees' => $meeting->attendees,
+                    'notes' => $meeting->notes,
+                    'backgroundColor' => $meeting->status === 'completed' ? '#10B981' : '#3B82F6',
+                    'borderColor' => $meeting->status === 'completed' ? '#059669' : '#2563EB'
+                ];
+            });
+
+        // Get leads for calendar
+        $leads = Lead::where('user_id', $user->id)
+            ->with('status')
+            ->get()
+            ->map(function($lead) {
+                return [
+                    'id' => "lead-{$lead->id}",
+                    'title' => $lead->name,
+                    'start' => $lead->created_at->format('Y-m-d'),
+                    'end' => $lead->created_at->format('Y-m-d'),
+                    'description' => $lead->description,
+                    'company' => $lead->company,
+                    'phone' => $lead->phone,
+                    'email' => $lead->email,
+                    'expected_amount' => $lead->expected_value,
+                    'status' => $lead->status?->name ?? 'Unknown',
+                    'notes' => $lead->notes,
+                    'backgroundColor' => $lead->status->color ?? '#3B82F6',
+                    'borderColor' => $lead->status->color ?? '#2563EB'
+                ];
+            });
+
+        // Get today's attendance
+        $attendance = Attendance::where('user_id', $user->id)
+            ->whereDate('date', $now->toDateString())
+            ->first();
+
+        // Get today's attendance
+        $attendanceShowCalender = Attendance::where('user_id', $user->id)
+            ->whereDate('date', $now->toDateString())
+            ->first();
+
+        // Convert attendance to array if it exists
+        $attendanceArray = [];
+        if ($attendanceShowCalender) {
+            // Format the check-in time in 12-hour format with AM/PM
+            $checkInTime = $attendanceShowCalender->check_in_time ? $attendanceShowCalender->check_in_time->format('h:i A') : 'N/A';
+
+            // Create the attendance event
+            $attendanceArray[] = [
+                'id' => $attendanceShowCalender->id,
+                'title' => "{$attendanceShowCalender->status} at {$checkInTime}",
+                'start' => $attendanceShowCalender->date->format('Y-m-d H:i:s'),
+                'end' => $attendanceShowCalender->date->addHour()->format('Y-m-d H:i:s'),
+                'description' => 'Checked in for the day',
+                'location' => $attendanceShowCalender->check_in_location,
+                'backgroundColor' => '#28a745',
+                'borderColor' => '#059669'
+            ];
+        }
+
+        // Get leaves for calendar
+        $leaves = Leave::where('user_id', $user->id)
+            ->whereMonth('start_date', $now->month)
+            ->get()
+            ->map(function($leave) {
+                return [
+                    'id' => "leave-{$leave->id}",
+                    'title' => "{$leave->type} Leave",
+                    'start' => $leave->start_date->format('Y-m-d'),
+                    'end' => $leave->end_date->format('Y-m-d'),
+                    'type' => $leave->type,
+                    'status' => $leave->status,
+                    'reason' => $leave->reason,
+                    'notes' => $leave->notes,
+                    'backgroundColor' => $leave->status === 'approved' ? '#10B981' : 
+                                    ($leave->status === 'pending' ? '#F59E0B' : '#EF4444'),
+                    'borderColor' => $leave->status === 'approved' ? '#059669' : 
+                                  ($leave->status === 'pending' ? '#D97706' : '#DC2626')
+                ];
+            });
+
+        // Merge all events for calendar
+        $events = array_merge(
+            $meetings->toArray(),
+            $leads->toArray(),
+            $attendanceArray,
+            $leaves->toArray()
+        );
 
         // Performance data
         $performanceData = $this->getPerformanceData($user);
@@ -100,50 +173,6 @@ class SalespersonDashboardController extends Controller
         $recentActivities = $this->getRecentActivities($user);
 
 
-        // Get meetings for calendar
-        $meetingsShowCalender = Meeting::where('user_id', $user->id)
-            ->where('meeting_date', '>=', $now)
-            ->get()
-            ->map(function ($meeting) {
-                return [
-                    'id' => $meeting->id,
-                    'title' => $meeting->title,
-                    'start' => $meeting->meeting_date->format('Y-m-d H:i:s'),
-                    'end' => $meeting->meeting_date->addHour()->format('Y-m-d H:i:s'),
-                    'description' => $meeting->description,
-                    'location' => $meeting->location,
-                    'backgroundColor' => $meeting->status === 'completed' ? '#10B981' : '#3B82F6',
-                    'borderColor' => $meeting->status === 'completed' ? '#059669' : '#2563EB'
-                ];
-            })->toArray(); // Convert to array
-
-        // Get today's attendance
-        $attendanceShowCalender = Attendance::where('user_id', $user->id)
-                ->whereDate('date', $now->toDateString())
-                ->first();
-
-            // Convert attendance to array if it exists
-            $attendanceArray = [];
-            if ($attendanceShowCalender) {
-            // Format the check-in time in 12-hour format with AM/PM
-                $checkInTime = $attendanceShowCalender->check_in_time ? $attendanceShowCalender->check_in_time->format('h:i A') : 'N/A';
-
-                // Create the attendance event
-                $attendanceArray[] = [
-                    'id' => $attendanceShowCalender->id,
-                    'title' => "{$attendanceShowCalender->status} at {$checkInTime}",
-                    'start' => $attendanceShowCalender->date->format('Y-m-d H:i:s'),
-                    'end' => $attendanceShowCalender->date->addHour()->format('Y-m-d H:i:s'),
-                    'description' => 'Checked in for the day',
-                    'location' => $attendanceShowCalender->check_in_location,
-                    'backgroundColor' => '#28a745',
-                    'borderColor' => '#059669'
-                ];
-            }
-
-            // Merge meetings and attendance
-            $events = array_merge($meetingsShowCalender, $attendanceArray);
-        
         return view('dashboard.salesperson.salesperson-dashboard', compact(
             'totalLeads',
             'monthlySales',
@@ -172,20 +201,51 @@ class SalespersonDashboardController extends Controller
             $dates->push($date->format('Y-m-d'));
         }
 
+        // Get leads data
         $leads = $user->leads()
             ->whereMonth('created_at', now()->month)
             ->get()
             ->groupBy(fn($lead) => $lead->created_at->format('Y-m-d'));
 
-        $sales = $user->sales()
-            ->whereMonth('created_at', now()->month)
+        // Get attendance data
+        $attendance = $user->attendances()
+            ->whereMonth('date', now()->month)
             ->get()
-            ->groupBy(fn($sale) => $sale->created_at->format('Y-m-d'));
+            ->groupBy(fn($attendance) => $attendance->date->format('Y-m-d'));
+
+        $present = [];
+        $late = [];
+        $absent = [];
+
+        foreach ($dates as $date) {
+            $dayAttendance = $attendance->get($date);
+            if ($dayAttendance) {
+                $present[] = $dayAttendance->where('status', 'present')->count();
+                $late[] = $dayAttendance->where('status', 'late')->count();
+                $absent[] = $dayAttendance->where('status', 'absent')->count();
+            } else {
+                $present[] = 0;
+                $late[] = 0;
+                $absent[] = 0;
+            }
+        }
+
+        // Get current plan and achievements
+        $currentPlan = $user->getCurrentMonthPlan();
+        $achievements = $currentPlan ? [
+            'leads' => $currentPlan->getLeadAchievementPercentage(),
+            'sales' => $currentPlan->getSalesAchievementPercentage()
+        ] : null;
 
         return [
             'labels' => $dates->map(fn($date) => Carbon::parse($date)->format('d M')),
             'leads' => $dates->map(fn($date) => $leads->get($date)?->count() ?? 0),
-            'sales' => $dates->map(fn($date) => $sales->get($date)?->sum('amount') ?? 0),
+            'attendance' => [
+                'present' => $present,
+                'late' => $late,
+                'absent' => $absent
+            ],
+            'achievements' => $achievements
         ];
     }
 

@@ -66,11 +66,9 @@ function showEventDetails(event) {
     let color = isMeeting ? "#4CAF50" : "#2196F3";
     let eventTitle = isMeeting ? "Meeting Details" : "Attendance Details";
 
-    let formattedTitle = event.title.charAt(0).toUpperCase() + event.title.slice(1); // First letter capital
-
     let htmlContent = `
             <div style="text-align: left;">
-                <h3 style="color: ${color}; font-size: 18px;">${icon} ${formattedTitle}</h3>
+                <h3 style="color: ${color}; font-size: 18px;">${icon} ${event.title}</h3>
                 <hr>
                 <p><strong>📅 Date:</strong> ${event.start}</p>
                 <p><strong>📍 Location:</strong> ${event.location || "N/A"}</p>
@@ -91,7 +89,6 @@ function showEventDetails(event) {
         }
     });
 }
-
 
 function editMeeting(eventId) {
     window.location.href = `/meetings/edit/${eventId}`;
@@ -123,12 +120,9 @@ function showWeekView() {
     }
 
     for (let d = startOfWeek; d <= endOfWeek; d.setDate(d.getDate() + 1)) {
-        let dayCell = document.createElement("div");
-        dayCell.className = "month-day";
-        dayCell.style.backgroundColor = getRandomColor(); // Har box ka alag color
-
+        let dayCell = document.createElement("div");         
         let date = d.toISOString().split("T")[0]; // YYYY-MM-DD
-        let dayName = d.toLocaleDateString('en-US', { weekday: 'long' }, { timeZone: "Asia/Kolkata" }); // Day Name
+        let dayName = d.toLocaleDateString('en-US', { weekday: 'long' }); // Day Name
 
         // **Day Name Bold + Centered**
         dayCell.innerHTML = `
@@ -159,7 +153,7 @@ function showWeekView() {
 function showDayView() {
     let todayDate = new Date();
     let today = todayDate.toISOString().split("T")[0]; // YYYY-MM-DD
-    let dayName = todayDate.toLocaleDateString('en-US', { weekday: 'long' }, { timeZone: "Asia/Kolkata" }); // Day name
+    let dayName = todayDate.toLocaleDateString('en-US', { weekday: 'long' }); // Day name
 
     document.getElementById("calendarGrid").innerHTML = "";
     updateCalendarTitle();

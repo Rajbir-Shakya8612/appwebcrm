@@ -14,6 +14,8 @@ return new class extends Migration
         Schema::create('plans', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->dateTime('start_date');
+            $table->dateTime('end_date');
             $table->integer('month');
             $table->integer('year');
             $table->enum('type', ['monthly', 'quarterly', 'yearly']);
