@@ -13,42 +13,61 @@ document.addEventListener('DOMContentLoaded', function() {
             return el.classList.contains('cursor-move');
         },
         accepts: function(el, target) {
-            return el !== target;
+            return target.id !== el.parentNode.id;
         },
         direction: 'horizontal',
-        animation: 150,
-        onDrop: function(el, target) {
-            const leadId = el.dataset.leadId;
-            const newStatusId = target.id.replace('status-', '');
-            
-            // Update lead status via AJAX
-            $.ajax({
-                url: `/salesperson/leads/${leadId}/status`,
-                method: 'PUT',
-                data: {
-                    status_id: newStatusId,
-                    _token: document.querySelector('meta[name="csrf-token"]').content
-                },
-                success: function(response) {
-                    if (response.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success!',
-                            text: 'Lead status updated successfully',
-                            timer: 1500,
-                            showConfirmButton: false
-                        });
-                    }
-                },
-                error: function() {
+        revertOnSpill: true
+    }).on('drop', function(el, target) {
+        const leadId = el.dataset.leadId;
+        const newStatusId = target.id.replace('status-', '');
+        const oldStatusId = el.parentNode.id.replace('status-', '');
+
+        // Update lead status via AJAX
+        $.ajax({
+            url: `/salesperson/leads/${leadId}/status`,
+            method: 'PUT',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            data: {
+                status_id: newStatusId,
+                _token: document.querySelector('meta[name="csrf-token"]').content
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Create activity for status change
+                    $.ajax({
+                        url: `/salesperson/leads/${leadId}/activity`,
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        data: {
+                            type: 'Status Changed',
+                            description: `Lead moved from ${oldStatusId} to ${newStatusId}`,
+                            _token: document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+
                     Swal.fire({
-                        icon: 'error',
-                        title: 'Error!',
-                        text: 'Failed to update lead status'
+                        icon: 'success',
+                        title: 'Success!',
+                        text: 'Lead status updated successfully',
+                        timer: 1500,
+                        showConfirmButton: false
                     });
                 }
-            });
-        }
+            },
+            error: function() {
+                // Revert the card to its original position
+                dragula(containers).cancel();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error!',
+                    text: 'Failed to update lead status'
+                });
+            }
+        });
     });
 
     // Handle lead actions
@@ -105,113 +124,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Edit lead function
-function editLead(leadId) {
-    $.get(`/salesperson/leads/${leadId}`, function (lead) {
-        Swal.fire({
-            width: '700px',
-            title: 'Edit Lead',
-            customClass: {
-                popup: 'swal-wide'
-            },
-            html: `
-                <form id="editLeadForm" class="space-y-4">
-                    <input type="hidden" name="lead_id" id="lead_id" value="${lead.id}">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="name" class="form-label">Name</label>
-                            <input type="text" name="name" id="name" value="${lead.name}" class="form-control" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="phone" class="form-label">Phone</label>
-                            <input type="tel" name="phone" id="phone" value="${lead.phone}" class="form-control" required>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" name="email" id="email" value="${lead.email}" class="form-control" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="company" class="form-label">Company</label>
-                            <input type="text" name="company" id="company" value="${lead.company}" class="form-control" required>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="source" class="form-label">Source</label>
-                            <select name="source" id="source" class="form-select" required>
-                                <option value="website" ${lead.source === 'website' ? 'selected' : ''}>Website</option>
-                                <option value="referral" ${lead.source === 'referral' ? 'selected' : ''}>Referral</option>
-                                <option value="social" ${lead.source === 'social' ? 'selected' : ''}>Social Media</option>
-                                <option value="other" ${lead.source === 'other' ? 'selected' : ''}>Other</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Description</label>
-                        <textarea name="description" id="description" class="form-control" required>${lead.notes || ''}</textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="expected_amount" class="form-label">Expected Amount</label>
-                        <input type="number" name="expected_amount" id="expected_amount" value="${lead.expected_amount}" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="status_id" class="form-label">Status ID</label>
-                        <input type="hidden" name="status_id" id="status_id" value="${lead.status_id}">
-                    </div>
-                </form>
-            `,
-            showCancelButton: true,
-            confirmButtonText: 'Update Lead',
-            cancelButtonText: 'Cancel',
-            preConfirm: () => {
-                const form = document.getElementById('editLeadForm');
-                const formData = new FormData(form);
-
-                return $.ajax({
-                    url: `/salesperson/leads/${leadId}`,
-                    method: 'PUT',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    }
-                }).then(response => {
-                    if (!response.success) {
-                        throw new Error(response.message || 'Failed to update lead');
-                    }
-                    return response;
-                });
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success!',
-                    text: 'Lead updated successfully',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
-                // Refresh the page to show the updated lead
-                window.location.reload();
-            }
-        }).catch(error => {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error!',
-                text: error.message || 'Failed to update lead. Please try again.'
-            });
-        });
-    }).fail(function () {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error!',
-            text: 'Failed to load lead data. Please try again.'
-        });
-    });
-}
 // Delete lead function
 function deleteLead(leadId) {
     Swal.fire({
@@ -253,4 +165,159 @@ function deleteLead(leadId) {
             });
         }
     });
-} 
+}
+
+function checkIn() {
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            $.ajax({
+                url: '/salesperson/attendance/checkin',
+                method: 'POST',
+                data: {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    address: 'Current Location',
+                    _token: document.querySelector('meta[name="csrf-token"]').content
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Update check-in time
+                        document.getElementById('checkInTime').textContent = response.time;
+                        
+                        // Update attendance status
+                        updateAttendanceStatus(response);
+                        
+                        // Show success message
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: response.message,
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+
+                        // Start location tracking
+                        isTracking = true;
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error!',
+                            text: response.message || 'Failed to check in'
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: 'Failed to check in. Please try again.'
+                    });
+                }
+            });
+        }, function(error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error!',
+                text: 'Failed to get location. Please enable location services.'
+            });
+        });
+    } else {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error!',
+            text: 'Geolocation is not supported by your browser'
+        });
+    }
+}
+
+// Function to update attendance status
+function updateAttendanceStatus(response) {
+    // Update check-in time
+    if (response.check_in_time) {
+        document.getElementById('checkInTime').textContent = response.check_in_time;
+    }
+    
+    // Update check-out time
+    if (response.check_out_time) {
+        document.getElementById('checkOutTime').textContent = response.check_out_time;
+    }
+    
+    // Update working hours
+    if (response.working_hours) {
+        document.querySelector('.working-hours-card p.h5').textContent = response.working_hours + ' hrs';
+    }
+    
+    // Update late status badge
+    const lateBadge = document.querySelector('.check-in-card .badge');
+    if (response.status === 'late') {
+        if (!lateBadge) {
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-warning text-dark';
+            badge.textContent = 'Late';
+            document.querySelector('.check-in-card').appendChild(badge);
+        }
+    } else if (lateBadge) {
+        lateBadge.remove();
+    }
+    
+    // Update buttons
+    const checkInBtn = document.querySelector('button[onclick="checkIn()"]');
+    const checkOutBtn = document.querySelector('button[onclick="checkOut()"]');
+    
+    if (response.check_in_time && !response.check_out_time) {
+        if (checkInBtn) checkInBtn.style.display = 'none';
+        if (checkOutBtn) checkOutBtn.style.display = 'block';
+    } else if (response.check_in_time && response.check_out_time) {
+        if (checkInBtn) checkInBtn.style.display = 'none';
+        if (checkOutBtn) checkOutBtn.style.display = 'none';
+    }
+}
+
+// Lead Form Submission
+document.getElementById('addLeadForm').addEventListener('submit', function(event) {
+    event.preventDefault();
+    
+    const form = this;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    
+    // Add CSRF token
+    data._token = document.querySelector('meta[name="csrf-token"]').content;
+    
+    fetch('/salesperson/leads', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: result.message,
+                timer: 1500,
+                showConfirmButton: false
+            });
+            // Refresh the page to show the new lead
+            window.location.reload();
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error!',
+                text: result.message || 'Failed to save lead'
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error!',
+            text: 'Failed to save lead. Please try again.'
+        });
+    });
+}); 

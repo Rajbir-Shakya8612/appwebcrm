@@ -61,11 +61,21 @@ class Attendance extends Model
 
     public function calculateWorkingHours()
     {
-        if ($this->check_in_time && $this->check_out_time) {
-            return $this->check_in_time->diffInHours($this->check_out_time, false);
+        if (!$this->check_in_time || !$this->check_out_time) {
+            return 0; // Default value if check-in or check-out is missing
         }
-        return 0;
+
+        $checkIn = Carbon::parse($this->check_in_time);
+        $checkOut = Carbon::parse($this->check_out_time);
+
+        // Ensure check-out time is AFTER check-in time
+        if ($checkOut->lessThan($checkIn)) {
+            return 0; // Prevent negative values
+        }
+
+        return round($checkIn->diffInSeconds($checkOut) / 3600, 2); // Convert to decimal
     }
+
 
     public function isWorkingHoursComplete()
     {

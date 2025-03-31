@@ -43,71 +43,81 @@ class LeadController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
-            'phone' => 'required|string|max:20',
-            'company' => 'required|string|max:255',
-            'description' => 'required|string',
-            'source' => 'required|string|max:255',
-            'expected_value' => 'required|numeric|min:0',
-            'notes' => 'nullable|string'
-        ]);
+        try {
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|max:255',
+                'phone' => 'required|string|max:20',
+                'company' => 'required|string|max:255',
+                'description' => 'required|string',
+                'source' => 'required|string|max:255',
+                'expected_amount' => 'required|numeric|min:0',
+                'notes' => 'nullable|string',
+                'status_id' => 'required|exists:lead_statuses,id'
+            ]);
 
-        $lead = Lead::create([
-            'user_id' => Auth::id(),
-            'status_id' => LeadStatus::where('slug', 'new')->first()->id,
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'company' => $request->company,
-            'notes' => $request->description,
-            'source' => $request->source,
-            'expected_amount' => $request->expected_value,
-            'notes' => $request->notes
-        ]);
+            $user = Auth::user();
+            $today = now()->toDateString();
 
-        $user = Auth::user();
-        $today = now()->toDateString();
+            // Check if the user has marked attendance today
+            $todayAttendance = Attendance::where('user_id', $user->id)
+                ->whereDate('date', $today)
+                ->exists();
 
-        // Check if the user has marked attendance today
-        $todayAttendance = Attendance::where('user_id', $user->id)
-            ->whereDate('date', $today)
-            ->exists();
+            if (!$todayAttendance) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'आप आज की अटेंडेंस लगाए बिना नई लीड नहीं जोड़ सकते।'
+                ], 403);
+            }
 
-        if (!$todayAttendance) {
-            return response()->json([
-                'success' => false,
-                'message' => 'आप आज की अटेंडेंस लगाए बिना नई लीड नहीं जोड़ सकते।'
-            ], 403);
-        }
-        // Create initial activity
-        $lead->createActivity(
-            'Lead Created',
-            'Lead was added to the system',
-            Auth::user()
-        );
+            $lead = Lead::create([
+                'user_id' => Auth::id(),
+                'status_id' => $request->status_id,
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'company' => $request->company,
+                'notes' => $request->description,
+                'source' => $request->source,
+                'expected_amount' => $request->expected_amount,
+                'notes' => $request->notes
+            ]);
 
-        // Send WhatsApp notification to admin
-        $admin = User::whereHas('role', function ($query) {
-            $query->where('name', 'admin');
-        })->first();
+            // Create initial activity
+            $lead->createActivity(
+                'Lead Created',
+                'Lead was added to the system',
+                Auth::user()
+            );
 
-        if ($admin) {
-            $this->whatsappService->sendNewLeadNotification($admin, $lead);
-        }
+            // Send WhatsApp notification to admin
+            $admin = User::whereHas('role', function ($query) {
+                $query->where('name', 'admin');
+            })->first();
 
-        // Check if the request is an AJAX request
-        if ($request->ajax()) {
+            if ($admin) {
+                $this->whatsappService->sendNewLeadNotification($admin, $lead);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Lead created successfully',
                 'lead' => $lead
-            ]);
+            ], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create lead',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        // Fallback for non-AJAX requests
-        return redirect()->back()->with('success', 'Lead created successfully');
     }
 
     /**
@@ -124,66 +134,78 @@ class LeadController extends Controller
      */
     public function update(Request $request, Lead $lead)
     {
-        $this->authorize('update', $lead);
+        try {
+            $this->authorize('update', $lead);
 
-        $request->validate([
-            'name' => 'string|max:255',
-            'email' => 'email|max:255',
-            'phone' => 'string|max:20',
-            'company' => 'string|max:255',
-            'description' => 'string',
-            'source' => 'string|max:255',
-            'expected_amount' => 'numeric|min:0',
-            'notes' => 'nullable|string',
-            'location' => 'nullable|string|max:255',
-            'additional_info' => 'nullable|string',
-        ]);
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|max:255',
+                'phone' => 'required|string|max:20',
+                'company' => 'required|string|max:255',
+                'description' => 'required|string',
+                'source' => 'required|string|max:255',
+                'expected_amount' => 'required|numeric|min:0',
+                'notes' => 'nullable|string',
+                'status_id' => 'required|exists:lead_statuses,id'
+            ]);
 
+            $user = Auth::user();
+            $today = now()->toDateString();
 
-        $user = Auth::user();
-        $today = now()->toDateString();
+            // Check if the user has marked attendance today
+            $todayAttendance = Attendance::where('user_id', $user->id)
+                ->whereDate('date', $today)
+                ->exists();
 
-        // Check if the user has marked attendance today
-        $todayAttendance = Attendance::where('user_id', $user->id)
-            ->whereDate('date', $today)
-            ->exists();
+            if (!$todayAttendance) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'आप आज की अटेंडेंस लगाए बिना नई लीड नहीं जोड़ सकते।'
+                ], 403);
+            }
 
-        if (!$todayAttendance) {
+            $lead->update([
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'company' => $request->company,
+                'notes' => $request->description,
+                'source' => $request->source,
+                'expected_amount' => $request->expected_amount,
+                'notes' => $request->notes,
+                'status_id' => $request->status_id
+            ]);
+
+            // Create activity for the update
+            $lead->createActivity(
+                'Lead Updated',
+                'Lead information was updated',
+                Auth::user()
+            );
+
+            // If status changed to converted, send notification
+            if ($lead->wasChanged('status') && $lead->status === 'converted') {
+                $this->whatsappService->sendLeadConversionNotification($lead->user, $lead);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Lead updated successfully',
+                'lead' => $lead
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'आप आज की अटेंडेंस लगाए बिना नई लीड नहीं जोड़ सकते।'
-            ], 403);
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update lead',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-
-
-        $lead->update($request->all());
-
-        // Create activity for the update
-        $lead->createActivity(
-            'Lead Updated',
-            'Lead information was updated',
-            Auth::user()
-        );
-
-        // $oldStatusId = $lead->status_id;
-        // **Dynamically check if status is converted**
-        // $convertedStatusId = LeadStatus::where('name', 'converted')->value('id');
-
-        // if ($oldStatusId !== $lead->status_id && $lead->status_id == $convertedStatusId) {
-        //     $this->whatsappService->sendLeadConversionNotification($lead->user, $lead);
-        // }
-
-        // If status changed to converted, send notification
-        if ($lead->wasChanged('status') && $lead->status === 'converted') {
-            $this->whatsappService->sendLeadConversionNotification($lead->user, $lead);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Lead updated successfully',
-            'lead' => $lead
-        ]);
     }
 
     /**

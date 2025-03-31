@@ -25,8 +25,8 @@
                                 --:--
                             @endif
                         </p>
-                        @if ($attendance && $attendance->status === 'late')
-                            <span class="badge bg-warning text-dark">Late</span>
+                        @if ($attendance && $attendance->status == 'late')
+                            <span class="badge bg-warning text-dark" id="checkInStatus">Late</span>
                         @endif
                     </div>
                 </div>
@@ -49,10 +49,9 @@
                 <div class="col-md-4 col-12 mb-3">
                     <div class="info-card working-hours-card shadow-sm text-center p-3">
                         <p class="small fw-semibold text-dark">Working Hours</p>
-                        <p class="h5 fw-bold text-dark">
+                        <p class="h5 fw-bold text-dark" id="workingHours">
                             @if ($attendance && $attendance->check_in_time && $attendance->check_out_time)
-                                {{ \Carbon\Carbon::parse($attendance->check_in_time)->diff(\Carbon\Carbon::parse($attendance->check_out_time))->format('%H:%I') }}
-                                hrs
+                                {{ \Carbon\Carbon::parse($attendance->check_in_time)->diff(\Carbon\Carbon::parse($attendance->check_out_time))->format('%H:%I') }} hrs
                             @else
                                 --
                             @endif
@@ -74,18 +73,21 @@
                 </div>
             </div>
 
-            <!-- Check In / Check Out Buttons -->
+
             <div class="d-flex justify-content-center mt-4">
                 @if (!$attendance || !$attendance->check_in_time)
-                    <button onclick="checkIn()" class="btn btn-primary-soft me-2">
+                    <button onclick="checkIn()" class="btn btn-primary-soft me-2" id="checkInButton">
                         <i class="fas fa-sign-in-alt me-2"></i> Check In
                     </button>
-                @elseif(!$attendance->check_out_time)
-                    <button onclick="checkOut()" class="btn btn-danger-soft">
+                @endif
+
+                @if ($attendance && $attendance->check_in_time && !$attendance->check_out_time)
+                    <button onclick="checkOut()" class="btn btn-danger-soft" id="checkOutButton">
                         <i class="fas fa-sign-out-alt me-2"></i> Check Out
                     </button>
                 @endif
             </div>
+
 
             <!-- Late Reason Modal -->
             <div class="modal fade" id="lateReasonModal" tabindex="-1" aria-labelledby="lateReasonModalLabel"
@@ -99,7 +101,7 @@
                         <div class="modal-body">
                             <form id="lateReasonForm">
                                 <div class="mb-3">
-                                    <label for="lateReason" class="form-label">Please provide reason for being late</label>
+                                    <label for="lateReason" class=" form-label text-start d-block">Please provide reason for being late</label>
                                     <textarea class="form-control" id="lateReason" rows="3" required></textarea>
                                 </div>
                             </form>
@@ -254,29 +256,29 @@
                             <input type="hidden" name="lead_id" id="lead_id">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="name" class="form-label">Name</label>
+                                    <label for="name" class=" form-label text-start d-block">Name</label>
                                     <input type="text" name="name" id="name" class="form-control" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="phone" class="form-label">Phone</label>
+                                    <label for="phone" class=" form-label text-start d-block">Phone</label>
                                     <input type="tel" name="phone" id="phone" class="form-control" required>
                                 </div>
                             </div>
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="email" class="form-label">Email</label>
+                                    <label for="email" class=" form-label text-start d-block">Email</label>
                                     <input type="email" name="email" id="email" class="form-control" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="company" class="form-label">Company</label>
+                                    <label for="company" class=" form-label text-start d-block">Company</label>
                                     <input type="text" name="company" id="company" class="form-control" required>
                                 </div>
                             </div>
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="source" class="form-label">Source</label>
+                                    <label for="source" class=" form-label text-start d-block">Source</label>
                                     <select name="source" id="source" class="form-select" required>
                                         <option value="">Select Source</option>
                                         <option value="website">Website</option>
@@ -286,29 +288,29 @@
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="status" class="form-label">Status</label>
-                                    <select name="status" id="status" class="form-select" required>
+                                    <label for="status" class=" form-label text-start d-block">Status</label>
+                                    <select name="status_id" id="status" class="form-select" required>
                                         <option value="">Select Status</option>
                                         @foreach ($leadStatuses as $status)
-                                            <option value="1">{{ $status->name }}</option>
+                                            <option value="{{ $status->id }}">{{ $status->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
                             </div>
 
                             <div class="mb-3">
-                                <label for="description" class="form-label">Description</label>
+                                <label for="description" class=" form-label text-start d-block">Description</label>
                                 <textarea name="description" id="description" class="form-control" rows="3" required></textarea>
                             </div>
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="expected_amount" class="form-label">Expected Amount</label>
+                                    <label for="expected_amount" class=" form-label text-start d-block">Expected Amount</label>
                                     <input type="number" name="expected_amount" id="expected_amount"
                                         class="form-control" min="0" step="0.01" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="notes" class="form-label">Notes</label>
+                                    <label for="notes" class=" form-label text-start d-block">Notes</label>
                                     <textarea name="notes" id="notes" class="form-control" rows="2"></textarea>
                                 </div>
                             </div>
@@ -336,19 +338,19 @@
                         <form id="addTaskForm" class="space-y-4">
                             @csrf
                             <div class="mb-3">
-                                <label for="taskTitle" class="form-label">Title</label>
+                                <label for="taskTitle" class=" form-label text-start d-block">Title</label>
                                 <input type="text" name="title" id="taskTitle" class="form-control" required>
                             </div>
                             <div class="mb-3">
-                                <label for="taskDescription" class="form-label">Description</label>
+                                <label for="taskDescription" class=" form-label text-start d-block">Description</label>
                                 <textarea name="description" id="taskDescription" class="form-control" rows="3"></textarea>
                             </div>
                             <div class="mb-3">
-                                <label for="dueDate" class="form-label">Due Date</label>
+                                <label for="dueDate" class=" form-label text-start d-block">Due Date</label>
                                 <input type="date" name="due_date" id="dueDate" class="form-control" required>
                             </div>
                             <div class="mb-3">
-                                <label for="priority" class="form-label">Priority</label>
+                                <label for="priority" class=" form-label text-start d-block">Priority</label>
                                 <select name="priority" id="priority" class="form-select" required>
                                     <option value="low">Low</option>
                                     <option value="medium">Medium</option>
@@ -480,270 +482,155 @@
 
         <script src="{{ asset('js/dashboard.js') }}"></script>
         <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                // Check in function with improved error handling
-                function checkIn() {
-                    if ("geolocation" in navigator) {
-                        navigator.geolocation.getCurrentPosition(function(position) {
-                            $.ajax({
-                                url: '/salesperson/attendance/checkin',
-                                method: 'POST',
-                                data: {
-                                    latitude: position.coords.latitude,
-                                    longitude: position.coords.longitude,
-                                    address: 'Current Location',
-                                    _token: '{{ csrf_token() }}'
-                                },
-                                success: function(response) {
-                                    if (response.success) {
-                                        document.getElementById('checkInTime').textContent =
-                                            response.time;
-                                        if (response.status === 'late') {
-                                            showLateReasonModal();
-                                        }
-                                        // Start location tracking after successful check-in
-                                        isTracking = true;
-                                        Swal.fire({
-                                            icon: 'success',
-                                            title: 'Success!',
-                                            text: response.message,
-                                            timer: 1500,
-                                            showConfirmButton: false
-                                        });
-                                        location.reload();
-                                    } else {
-                                        Swal.fire({
-                                            icon: 'error',
-                                            title: 'Error!',
-                                            text: response.message || 'Failed to check in'
-                                        });
-                                    }
-                                },
-                                error: function(xhr) {
-                                    Swal.fire({
-                                        icon: 'error',
-                                        title: 'Error!',
-                                        text: 'Failed to check in. Please try again.'
-                                    });
-                                }
-                            });
-                        }, function(error) {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error!',
-                                text: 'Failed to get location. Please enable location services.'
-                            });
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error!',
-                            text: 'Geolocation is not supported by your browser'
-                        });
-                    }
-                }
+          
+           
+     // Location tracking variables
+let map, marker, locationUpdateInterval, isTracking = false, lastLocationUpdate = null;
+let retryCount = 0, maxRetries = 3; // Retry limit for failed requests
 
-                // Check out function with improved error handling
-                function checkOut() {
-                    if ("geolocation" in navigator) {
-                        // Stop location tracking before checking out
-                        isTracking = false;
+// Initialize Google Map
+function initMap() {
+    map = new google.maps.Map(document.getElementById('locationMap'), {
+        zoom: 15,
+        center: { lat: 0, lng: 0 }
+    });
+    marker = new google.maps.Marker({
+        map: map,
+        position: { lat: 0, lng: 0 }
+    });
+}
 
-                        navigator.geolocation.getCurrentPosition(function(position) {
-                            $.ajax({
-                                url: '/salesperson/attendance/checkout',
-                                method: 'POST',
-                                data: {
-                                    latitude: position.coords.latitude,
-                                    longitude: position.coords.longitude,
-                                    address: 'Current Location',
-                                    _token: '{{ csrf_token() }}'
-                                },
-                                success: function(response) {
-                                    if (response.success) {
-                                        document.getElementById('checkOutTime').textContent =
-                                            response.time;
-                                        Swal.fire({
-                                            icon: 'success',
-                                            title: 'Success!',
-                                            text: response.message,
-                                            timer: 1500,
-                                            showConfirmButton: false
-                                        });
-                                        location.reload();
-                                    } else {
-                                        Swal.fire({
-                                            icon: 'error',
-                                            title: 'Error!',
-                                            text: response.message || 'Failed to check out'
-                                        });
-                                    }
-                                },
-                                error: function(xhr) {
-                                    Swal.fire({
-                                        icon: 'error',
-                                        title: 'Error!',
-                                        text: 'Failed to check out. Please try again.'
-                                    });
-                                }
-                            });
-                        }, function(error) {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error!',
-                                text: 'Failed to get location. Please enable location services.'
-                            });
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error!',
-                            text: 'Geolocation is not supported by your browser'
-                        });
-                    }
-                }
+// Get and update location immediately
+function getCurrentLocation(callback) {
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const { latitude, longitude, accuracy } = position.coords;
+                updateLocation(position);
+                callback(latitude, longitude, accuracy);
+            },
+            function(error) {
+                console.error('Geolocation error:', error.message);
+                callback(null, null, null);
+            },
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+    } else {
+        console.error('Geolocation not supported');
+        callback(null, null, null);
+    }
+}
 
+// Update location and UI
+function updateLocation(position) {
+    try {
+        const { latitude, longitude } = position.coords;
+        const location = { lat: latitude, lng: longitude };
 
-            });
+        // Update map and marker
+        map.setCenter(location);
+        marker.setPosition(location);
 
-            // location logics start
+        // Update UI
+        document.getElementById('currentLocation').textContent = 
+            `Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`;
+    } catch (error) {
+        console.error('Error updating location:', error);
+    }
+}
 
-            let map;
-            let marker;
-            let locationUpdateInterval;
-            let isTracking = false;
-            let lastLocationUpdate = null;
+// Check-in function
+function checkIn() {
+    const checkInBtn = document.getElementById('checkInButton');
+    checkInBtn.disabled = true;
+    checkInBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Checking in...';
+    
+    getCurrentLocation((latitude, longitude, accuracy) => {
+        sendCheckInData(latitude, longitude, accuracy);
+    });
+}
 
-            // Initialize map
-            function initMap() {
-                map = new google.maps.Map(document.getElementById('locationMap'), {
-                    zoom: 15,
-                    center: {
-                        lat: 0,
-                        lng: 0
-                    }
+function sendCheckInData(latitude, longitude, accuracy) {
+    $.ajax({
+        url: '/salesperson/attendance/checkin',
+        method: 'POST',
+        data: {
+            check_in_location: JSON.stringify({ latitude, longitude, accuracy, timestamp: new Date().toISOString() }),
+            _token: '{{ csrf_token() }}'
+        },
+        success: function(response) {
+            if (response.success) {
+                let checkInTimeFormatted = new Date(response.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                document.getElementById('checkOutTime').textContent = response.time;
+                document.getElementById('checkInButton').style.display = 'none';
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Checked In Successfully!',
+                    text: response.message,
+                    timer: 2000,
+                    showConfirmButton: false
                 });
-                marker = new google.maps.Marker({
-                    map: map,
-                    position: {
-                        lat: 0,
-                        lng: 0
-                    }
+                location.reload();
+            }
+        },
+        complete: function() {
+            document.getElementById('checkInButton').disabled = false;
+            document.getElementById('checkInButton').innerHTML = '<i class="fas fa-sign-in-alt me-2"></i> Check In';
+        }
+    });
+}
+
+// Check-out function
+function checkOut() {
+    const checkOutBtn = document.getElementById('checkOutButton');
+    checkOutBtn.disabled = true;
+    checkOutBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Checking out...';
+    
+    getCurrentLocation((latitude, longitude, accuracy) => {
+        sendCheckOutData(latitude, longitude, accuracy);
+    });
+}
+
+function sendCheckOutData(latitude, longitude, accuracy) {
+    $.ajax({
+        url: '/salesperson/attendance/checkout',
+        method: 'POST',
+        data: {
+            check_out_location: JSON.stringify({ latitude, longitude, accuracy, timestamp: new Date().toISOString() }),
+            _token: '{{ csrf_token() }}'
+        },
+        success: function(response) {
+            if (response.success) {
+                let checkOutTimeFormatted = new Date(response.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        // ✅ Directly set check-out time from response
+                document.getElementById('checkOutTime').textContent = response.time;
+                document.getElementById('workingHours').textContent = response.working_hours + 'hrs';
+      
+                
+                let checkInTime = new Date(response.check_in_time);
+                let checkOutTime = new Date(response.check_out_time);
+                let workingHours = Math.floor((checkOutTime - checkInTime) / (1000 * 60 * 60));
+                let workingMinutes = Math.floor(((checkOutTime - checkInTime) % (1000 * 60 * 60)) / (1000 * 60));
+             
+                
+                document.getElementById('checkOutButton').style.display = 'none';
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Checked Out Successfully!',
+                    text: `You checked out at ${response.time}. Total working hours: ${response.working_hours}`,
+                    timer: 2000,
+                    showConfirmButton: false
                 });
+                
             }
-
-            // Update location with error handling and retry logic
-            function updateLocation(position) {
-                try {
-                    const {
-                        latitude,
-                        longitude,
-                        speed,
-                        accuracy
-                    } = position.coords;
-                    const location = {
-                        lat: latitude,
-                        lng: longitude
-                    };
-
-                    map.setCenter(location);
-                    marker.setPosition(location);
-
-                    // Update location display
-                    document.getElementById('currentLocation').textContent =
-                        `Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`;
-
-                    // Only record location if tracking is active and enough time has passed
-                    if (isTracking && (!lastLocationUpdate || Date.now() - lastLocationUpdate > 30000)) {
-                        recordLocation(latitude, longitude, speed, accuracy);
-                        lastLocationUpdate = Date.now();
-                    }
-                } catch (error) {
-                    console.error('Error updating location:', error);
-                    document.getElementById('currentLocation').textContent =
-                        'Error updating location. Retrying...';
-                }
-            }
-
-            // Record location to server with retry logic
-            function recordLocation(latitude, longitude, speed, accuracy) {
-                $.ajax({
-                    url: '/location/tracks',
-                    method: 'POST',
-                    data: {
-                        latitude: latitude,
-                        longitude: longitude,
-                        speed: speed,
-                        accuracy: accuracy,
-                        address: 'Current Location',
-                        _token: '{{ csrf_token() }}'
-                    },
-                    success: function(response) {
-                        if (!response.success) {
-                            console.error('Failed to record location:', response.message);
-                            // Retry after 5 seconds
-                            setTimeout(() => recordLocation(latitude, longitude, speed, accuracy), 5000);
-                        }
-                    },
-                    error: function(xhr) {
-                        console.error('Error recording location:', xhr);
-                        // Retry after 5 seconds
-                        setTimeout(() => recordLocation(latitude, longitude, speed, accuracy), 5000);
-                    }
-                });
-            }
-
-            // Start location tracking with improved error handling
-            function startLocationTracking() {
-                if ("geolocation" in navigator) {
-                    const options = {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    };
-
-                    // Get initial position
-                    navigator.geolocation.getCurrentPosition(
-                        updateLocation,
-                        handleLocationError,
-                        options
-                    );
-
-                    // Start watching position
-                    locationUpdateInterval = navigator.geolocation.watchPosition(
-                        updateLocation,
-                        handleLocationError,
-                        options
-                    );
-                } else {
-                    document.getElementById('currentLocation').textContent =
-                        'Geolocation is not supported by your browser';
-                }
-            }
-
-            // Handle location errors
-            function handleLocationError(error) {
-                let errorMessage = 'Error getting location: ';
-                switch (error.code) {
-                    case error.PERMISSION_DENIED:
-                        errorMessage += 'Permission denied. Please enable location services.';
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        errorMessage += 'Location information unavailable.';
-                        break;
-                    case error.TIMEOUT:
-                        errorMessage += 'Location request timed out.';
-                        break;
-                    default:
-                        errorMessage += error.message;
-                }
-                console.error('Geolocation error:', error);
-                document.getElementById('currentLocation').textContent = errorMessage;
-            }
-
-            // locations logics close
-
-
+        },
+        complete: function() {
+            document.getElementById('checkOutButton').disabled = false;
+            document.getElementById('checkOutButton').innerHTML = '<i class="fas fa-sign-out-alt me-2"></i> Check Out';
+        }
+    });
+}
 
             // Show late reason modal
             function showLateReasonModal() {
@@ -959,7 +846,123 @@
                 });
             }
 
+            function editLead(leadId) {
+                $.get(`/salesperson/leads/${leadId}`, function (lead) {
+                    Swal.fire({
+                        width: '700px',
+                        title: 'Edit Lead',
+                        customClass: {
+                            popup: 'swal-wide'
+                        },
+                        html: `
+                        <form id="editLeadForm" class="space-y-4">
+                            <input type="hidden" name="lead_id" id="lead_id" value="${lead.id}">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="name" class=" form-label text-start d-block">Name</label>
+                                    <input type="text" name="name" id="name" value="${lead.name}" class="form-control" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="phone" class=" form-label text-start d-block">Phone</label>
+                                    <input type="tel" name="phone" id="phone" value="${lead.phone}" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="email" class=" form-label text-start d-block">Email</label>
+                                    <input type="email" name="email" id="email" value="${lead.email}" class="form-control" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="company" class=" form-label text-start d-block">Company</label>
+                                    <input type="text" name="company" id="company" value="${lead.company}" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="source" class=" form-label text-start d-block">Source</label>
+                                    <select name="source" id="source" class="form-select" required>
+                                        <option value="website" ${lead.source === 'website' ? 'selected' : ''}>Website</option>
+                                        <option value="referral" ${lead.source === 'referral' ? 'selected' : ''}>Referral</option>
+                                        <option value="social" ${lead.source === 'social' ? 'selected' : ''}>Social Media</option>
+                                        <option value="other" ${lead.source === 'other' ? 'selected' : ''}>Other</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="status_id" class=" form-label text-start d-block">Status</label>
+                                    <select name="status_id" id="status_id" class="form-select" required>
+                                        <option value="">Select Status</option>
+                                        @foreach ($leadStatuses as $status)
+                                            <option value="{{ $status->id }}" ${lead.status_id == {{ $status->id }} ? 'selected' : ''}>
+                                                {{ $status->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="description" class=" form-label text-start d-block">Description</label>
+                                <textarea name="description" id="description" class="form-control" required>${lead.notes || ''}</textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="expected_amount" class=" form-label text-start d-block">Expected Amount</label>
+                                <input type="number" name="expected_amount" id="expected_amount" value="${lead.expected_amount}" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="notes" class=" form-label text-start d-block">Notes</label>
+                                <textarea name="notes" id="notes" class="form-control">${lead.notes || ''}</textarea>
+                            </div>
+                        </form>
+                    `,
+                        showCancelButton: true,
+                        confirmButtonText: 'Update Lead',
+                        cancelButtonText: 'Cancel',
+                        preConfirm: () => {
+                            const form = document.getElementById('editLeadForm');
+                            const formData = new FormData(form);
+                            const data = Object.fromEntries(formData.entries());
 
+                            return $.ajax({
+                                url: `/salesperson/leads/${leadId}`,
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                },
+                                data: JSON.stringify(data)
+                            }).then(response => {
+                                if (!response.success) {
+                                    throw new Error(response.message || 'Failed to update lead');
+                                }
+                                return response;
+                            });
+                        }
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: 'Lead updated successfully',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                            // Refresh the page to show the updated lead
+                            window.location.reload();
+                        }
+                    }).catch(error => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error!',
+                            text: error.message || 'Failed to update lead. Please try again.'
+                        });
+                    });
+                }).fail(function () {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: 'Failed to load lead data. Please try again.'
+                    });
+                });
+            }
             // Lead Form Submission
             document.getElementById('addLeadForm').addEventListener('submit', function(event) {
                 event.preventDefault();
@@ -1052,7 +1055,7 @@
 
 
             // Initialize Dragula for lead status changes
-            const containers = document.querySelectorAll('[id^="status-"]');
+            const containers = document.querySelectorAll('[id="status-"]');
             dragula(containers, {
             moves: function(el) {
                 return el.classList.contains('cursor-move');

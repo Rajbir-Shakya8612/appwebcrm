@@ -705,3 +705,47 @@ bina websocket or pusher ke kre isse taaki shi se chal ske kyunki sbmit hokar re
 
 
 kya aap kanban ka design thoda improve krke professional kr skte ho jisse wo or behtarin ban jaaye with colorfull bootstrap5 + css +js se or card ko swap kre to uska status bhi update ho ske shi se
+
+
+
+latest task
+
+1. check in krne pr time lg rha hai sath ke sath hi hona chahiye or attandance lgte hi page pr show bhi ho jaaye bina page refresh ke aesa kro same checkout main bhi time na le
+2. lead update krne main errors de rha hai unhe theek kre taaki leads shi se update ho ske aap migrations model or controller ka code dekhe uske baad blade file salesperson-dashboard.blade.php or dashboard.js jo ki public dir main hai usse shi kre
+errors
+: 
+{name: ["The name field is required."], email: ["The email field is required."],…}
+company
+: 
+["The company field is required."]
+description
+: 
+["The description field is required."]
+email
+: 
+["The email field is required."]
+expected_amount
+: 
+["The expected amount field is required."]
+name
+: 
+["The name field is required."]
+phone
+: 
+["The phone field is required."]
+source
+: 
+["The source field is required."]
+message
+: 
+"The name field is required. (and 6 more errors)"
+
+form main jo add krna hai wo add kre migrations or model main dekh kr or shi se kre isse solve taaki store update ho ske
+
+3. kanban ke jo card hai wo swap ya rander nhi kr pa rhe hai usse bhi theek kre taaki jese hi new status pr kre to wo status bhi udate ho jaaye or bta de ki isme card swap kiya hai bina kisi change ke taaki activities main pta rhe card swap krne pr status change ho tb
+4. plan or task wala bhi dekhe salesperson dashboard pr add, update, delete ho ske unhe bhi dekhe
+
+isme sbhi ke routes migrations model or controller main method bana rakhe hai or kisi kisi ke to console mian command bhi jo ki yahan hai
+\app\Console
+
+jisme change krne ki or theek krne ki jrurat hai whi kre or proper code de shi see theek krke isse kre

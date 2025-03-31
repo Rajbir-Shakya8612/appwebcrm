@@ -17,6 +17,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\MeetingController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\LocationTrackController;
+use App\Http\Controllers\TaskController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -142,6 +143,14 @@ Route::middleware(['auth', 'salesperson'])->prefix('salesperson')->group(functio
     Route::get('/plans/current-month', [PlanController::class, 'getCurrentMonthPlan'])->name('salesperson.plans.current');
     Route::get('/plans/quarterly', [PlanController::class, 'getQuarterlyPlan'])->name('salesperson.plans.quarterly');
     Route::get('/plans/yearly', [PlanController::class, 'getYearlyPlan'])->name('salesperson.plans.yearly');
+
+    // Task Routes
+    Route::get('/tasks', [TaskController::class, 'index'])->name('salesperson.tasks');
+    Route::post('/tasks', [TaskController::class, 'store'])->name('salesperson.tasks.store');
+    Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('salesperson.tasks.show');
+    Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('salesperson.tasks.update');
+    Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('salesperson.tasks.destroy');
+    Route::put('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('salesperson.tasks.status');
 });
 
 
