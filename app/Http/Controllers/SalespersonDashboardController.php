@@ -96,12 +96,10 @@ class SalespersonDashboardController extends Controller
                     'title' => $lead->name,
                     'start' => $lead->created_at->format('Y-m-d'),
                     'end' => $lead->created_at->format('Y-m-d'),
-                    'description' => $lead->description,
                     'company' => $lead->company,
                     'phone' => $lead->phone,
                     'email' => $lead->email,
-                    'expected_amount' => $lead->expected_value,
-                    'status' => $lead->status?->name ?? 'Unknown',
+                    'status' => $lead->status ?? 'Unknown',
                     'notes' => $lead->notes,
                     'backgroundColor' => $lead->status->color ?? '#3B82F6',
                     'borderColor' => $lead->status->color ?? '#2563EB'
@@ -113,29 +111,47 @@ class SalespersonDashboardController extends Controller
             ->whereDate('date', $now->toDateString())
             ->first();
 
-        // Get today's attendance
-        $attendanceShowCalender = Attendance::where('user_id', $user->id)
-            ->whereDate('date', $now->toDateString())
-            ->first();
+        // Get attendance for calendar
+        $attendanceEvents = Attendance::where('user_id', $user->id)
+            ->whereMonth('date', $now->month)
+            ->get()
+            ->map(function($attendance) {
+                return [
+                    'id' => "attendance-{$attendance->id}",
+                    'title' => "{$attendance->status} at " . ($attendance->check_in_time ? Carbon::parse($attendance->check_in_time)->format('h:i A') : 'N/A'),
+                    'start' => $attendance->date->format('Y-m-d'),
+                    'end' => $attendance->date->format('Y-m-d'),
+                    'description' => 'Attendance for the day',
+                    'status' => $attendance->status,
+                    'check_in_time' => $attendance->check_in_time ? Carbon::parse($attendance->check_in_time)->format('H:i:s') : null,
+                    'check_out_time' => $attendance->check_out_time ? Carbon::parse($attendance->check_out_time)->format('H:i:s') : null,
+                    'working_hours' => $attendance->working_hours,
+                    'backgroundColor' => $attendance->status === 'present' ? '#10B981' : 
+                                    ($attendance->status === 'late' ? '#F59E0B' : '#EF4444'),
+                    'borderColor' => $attendance->status === 'present' ? '#059669' : 
+                                  ($attendance->status === 'late' ? '#D97706' : '#DC2626')
+                ];
+            });
 
-        // Convert attendance to array if it exists
-        $attendanceArray = [];
-        if ($attendanceShowCalender) {
-            // Format the check-in time in 12-hour format with AM/PM
-            $checkInTime = $attendanceShowCalender->check_in_time ? $attendanceShowCalender->check_in_time->format('h:i A') : 'N/A';
-
-            // Create the attendance event
-            $attendanceArray[] = [
-                'id' => $attendanceShowCalender->id,
-                'title' => "{$attendanceShowCalender->status} at {$checkInTime}",
-                'start' => $attendanceShowCalender->date->format('Y-m-d H:i:s'),
-                'end' => $attendanceShowCalender->date->addHour()->format('Y-m-d H:i:s'),
-                'description' => 'Checked in for the day',
-                'location' => $attendanceShowCalender->check_in_location,
-                'backgroundColor' => '#28a745',
-                'borderColor' => '#059669'
-            ];
-        }
+        // Get tasks for calendar
+        $tasks = Task::where('assignee_id', $user->id)
+            ->where('status', '!=', 'completed')
+            ->get()
+            ->map(function($task) {
+                return [    
+                    'id' => "task-{$task->id}",
+                    'title' => $task->title,
+                    'start' => $task->due_date->format('Y-m-d'),
+                    'end' => $task->due_date->format('Y-m-d'),
+                    'description' => $task->description,
+                    'priority' => $task->priority,
+                    'status' => $task->status,
+                    'backgroundColor' => $task->priority === 'high' ? '#EF4444' : 
+                                    ($task->priority === 'medium' ? '#F59E0B' : '#8B5CF6'),
+                    'borderColor' => $task->priority === 'high' ? '#DC2626' : 
+                                  ($task->priority === 'medium' ? '#D97706' : '#7C3AED')
+                ];
+            });
 
         // Get leaves for calendar
         $leaves = Leave::where('user_id', $user->id)
@@ -162,7 +178,8 @@ class SalespersonDashboardController extends Controller
         $events = array_merge(
             $meetings->toArray(),
             $leads->toArray(),
-            $attendanceArray,
+            $attendanceEvents->toArray(),
+            $tasks->toArray(),
             $leaves->toArray()
         );
 
@@ -171,7 +188,6 @@ class SalespersonDashboardController extends Controller
 
         // Recent activities
         $recentActivities = $this->getRecentActivities($user);
-
 
         return view('dashboard.salesperson.salesperson-dashboard', compact(
             'totalLeads',
