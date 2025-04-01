@@ -184,63 +184,88 @@
         <div class="bg-white rounded shadow mt-4">
             <div class="p-4 border-bottom">
                 <h3 class="h6">Lead Pipeline</h3>
-
-                <div class="d-flex">
-                    <button onclick="openLeadModal()" class="btn btn-primary me-2">
-                        + Add New Lead
-                    </button>
-                    <button onclick="openModal()" class="btn btn-success">
-                        + Add New Task
-                    </button>
-                </div>
             </div>
-            <div class="p-4">
-                <div class="d-flex overflow-auto">
-                    @foreach ($leadStatuses as $status)
-                        <div class="flex-shrink-0 me-3" style="width: 300px;">
-                            <div class="bg-light rounded p-3">
-                                <h4 class="small text-muted mb-3">{{ $status->name }}</h4>
-                                <div class="mb-3" id="status-{{ $status->id }}">
-                                    @foreach ($status->leads as $lead)
-                                        <div class="bg-white rounded shadow p-3 mb-2 cursor-move"
-                                            data-lead-id="{{ $lead->id }}">
-                                            <div class="d-flex justify-content-between mb-2">
-                                                <h5 class="font-weight-bold text-dark">{{ $lead->name }}</h5>
-                                                <span
-                                                    class="small text-muted">{{ $lead->created_at->format('M d, Y') }}</span>
-                                            </div>
-                                            <p class="small text-muted mb-3">{{ Str::limit($lead->description, 100) }}</p>
-                                            <div class="d-flex justify-content-between">
-                                                <div class="d-flex align-items-center">
-                                                    <a href="tel:{{ $lead->phone }}" class="text-primary me-2">
-                                                        <i class="fas fa-phone"></i>
-                                                    </a>
-                                                    <a href="mailto:{{ $lead->email }}" class="text-success me-2">
-                                                        <i class="fas fa-envelope"></i>
-                                                    </a>
-                                                    <a href="https://wa.me/{{ $lead->phone }}" target="_blank"
-                                                        class="text-success">
-                                                        <i class="fab fa-whatsapp"></i>
-                                                    </a>
-                                                </div>
-                                                <div class="d-flex align-items-center">
-                                                    <button onclick="editLead({{ $lead->id }})"
-                                                        class="text-primary me-2">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-                                                    <button onclick="deleteLead({{ $lead->id }})"
-                                                        class="text-danger">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
+            <div class="kanban-board">
+                @foreach ($leadStatuses as $status)
+                    <div class="kanban-column" data-status-id="{{ $status->id }}">
+                        <div class="kanban-column-header d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <h4 class="kanban-column-title me-2">{{ $status->name }}</h4>
+                                <button class="btn-add-lead" onclick="addNewLead({{ $status->id }})">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            <span class="column-lead-count">{{ $status->leads->count() }}</span>
+                        </div>
+                        <div class="kanban-cards" data-status-id="{{ $status->id }}">
+                            @foreach ($status->leads as $lead)
+                                <div class="kanban-card status-{{ strtolower($status->name) }}" data-lead-id="{{ $lead->id }}">
+                                    <div class="card-header">
+                                        <div>
+                                            <h5 class="card-title">{{ $lead->name }}</h5>
+                                            <div class="card-company">
+                                                <i class="fas fa-building me-1"></i>
+                                                {{ $lead->company }}
                                             </div>
                                         </div>
-                                    @endforeach
+                                    </div>
+                                    <div class="card-info">
+                                        @if($lead->phone)
+                                            <div class="info-row">
+                                                <i class="fas fa-phone"></i>
+                                                {{ $lead->phone }}
+                                            </div>
+                                        @endif
+                                        @if($lead->email)
+                                            <div class="info-row">
+                                                <i class="fas fa-envelope"></i>
+                                                {{ $lead->email }}
+                                            </div>
+                                        @endif
+                                        @if($lead->address)
+                                            <div class="info-row">
+                                                <i class="fas fa-map-marker-alt"></i>
+                                                {{ Str::limit($lead->address, 50) }}
+                                            </div>
+                                        @endif
+                                        @if($lead->notes)
+                                            <div class="info-row">
+                                                <i class="fas fa-sticky-note"></i>
+                                                {{ Str::limit($lead->notes, 100) }}
+                                            </div>
+                                        @endif
+                                        @if($lead->follow_up_date)
+                                            <div class="follow-up-date">
+                                                <i class="fas fa-calendar-alt"></i>
+                                                Follow-up: {{ \Carbon\Carbon::parse($lead->follow_up_date)->format('M d, Y') }}
+                                            </div>
+                                        @endif
+                                        <div class="card-rating">
+                                            @for ($i = 1; $i <= 5; $i++)
+                                                <i class="fas fa-star {{ $i <= ($lead->rating ?? 0) ? 'star' : 'star-empty' }}"></i>
+                                            @endfor
+                                        </div>
+                                    </div>
+                                    <div class="contact-icons">
+                                        <a href="tel:{{ $lead->phone }}" class="contact-icon phone">
+                                            <i class="fas fa-phone"></i>
+                                        </a>
+                                        <a href="mailto:{{ $lead->email }}" class="contact-icon email">
+                                            <i class="fas fa-envelope"></i>
+                                        </a>
+                                        <a href="https://wa.me/{{ $lead->phone }}" class="contact-icon whatsapp" target="_blank">
+                                            <i class="fab fa-whatsapp"></i>
+                                        </a>
+                                        <div class="ms-auto">
+                                            <i class="fas fa-edit edit-icon" onclick="editLead({{ $lead->id }})"></i>
+                                            <i class="fas fa-trash delete-icon" onclick="deleteLead({{ $lead->id }})"></i>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            @endforeach
                         </div>
-                    @endforeach
-                </div>
+                    </div>
+                @endforeach
             </div>
         </div>
 
@@ -478,12 +503,14 @@
         </div>
     </div>
 
+
     @push('scripts')
         <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
         <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBl5N0v6zO372f3-RU-mSKNAMyN1Cu0Rzk"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
         <script src="{{ asset('js/dashboard.js') }}"></script>
+        <script src="{{ asset('js/kanban.js') }}"></script>
         <script>
             // Location tracking variables
             let map, marker, locationUpdateInterval, isTracking = false,

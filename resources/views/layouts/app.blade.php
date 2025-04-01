@@ -18,6 +18,7 @@
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
 
     <link rel="stylesheet" href="{{ asset('css/salesperson.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/kanban.css') }}">
 </head>
 
 <body class="bg-light">

@@ -1,0 +1,240 @@
+.kanban-board {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    overflow-x: auto;
+    min-height: 500px;
+}
+
+.kanban-column {
+    flex: 0 0 300px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.kanban-column-header {
+    min-height: 10px;
+    padding: 8px 0px 15px 0px;
+    border-bottom: 2px solid #e9ecef;
+    margin-bottom: 1rem;
+}
+
+.kanban-column-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #495057;
+    margin: 0;
+}
+
+.kanban-cards {
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Status-based card styles */
+.kanban-card {
+    background: white;
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    cursor: grab;
+    transition: all 0.3s ease;
+    border-left: 4px solid #ddd;
+}
+
+/* New Lead Status */
+.status-new {
+    background: linear-gradient(145deg, #ffffff, #f0f7ff);
+    border-left-color: #0d6efd;
+}
+
+/* Contacted Status */
+.status-contacted {
+    background: linear-gradient(145deg, #ffffff, #f0fff4);
+    border-left-color: #198754;
+}
+
+/* Qualified Status */
+.status-qualified {
+    background: linear-gradient(145deg, #ffffff, #fff7f0);
+    border-left-color: #fd7e14;
+}
+
+/* Proposal Status */
+.status-proposal {
+    background: linear-gradient(145deg, #ffffff, #fff0f7);
+    border-left-color: #e83e8c;
+}
+
+/* Won Status */
+.status-won {
+    background: linear-gradient(145deg, #ffffff, #f0fff4);
+    border-left-color: #28a745;
+}
+
+/* Lost Status */
+.status-lost {
+    background: linear-gradient(145deg, #ffffff, #fff0f0);
+    border-left-color: #dc3545;
+}
+
+.kanban-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.kanban-card.dragging {
+    opacity: 0.7;
+    transform: scale(0.95);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.card-title {
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0 0 0.25rem 0;
+    font-size: 1rem;
+}
+
+.card-company {
+    color: #718096;
+    font-size: 0.875rem;
+}
+
+.card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.info-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #4a5568;
+    font-size: 0.875rem;
+}
+
+.info-row i {
+    width: 16px;
+    color: #718096;
+}
+
+.contact-icons {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-top: 1px solid rgba(0,0,0,0.05);
+    margin-top: 0.75rem;
+}
+
+.contact-icon {
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.contact-icon:hover {
+    background-color: rgba(0,0,0,0.05);
+}
+
+.contact-icon.phone {
+    color: #0d6efd;
+}
+
+.contact-icon.email {
+    color: #198754;
+}
+
+.contact-icon.whatsapp {
+    color: #25D366;
+}
+
+.edit-icon {
+    color: #0d6efd;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.delete-icon {
+    color: #dc3545;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.edit-icon:hover, .delete-icon:hover {
+    background-color: rgba(0,0,0,0.05);
+}
+
+.card-rating {
+    display: flex;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+}
+
+.star {
+    color: #ffc107;
+}
+
+.star-empty {
+    color: #e9ecef;
+}
+
+.column-lead-count {
+    background: #e9ecef;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    color: #495057;
+    font-weight: 600;
+}
+
+.follow-up-date {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.813rem;
+    color: #e83e8c;
+    padding: 0.5rem;
+    background-color: rgba(232, 62, 140, 0.1);
+    border-radius: 6px;
+}
+
+.follow-up-date i {
+    font-size: 0.875rem;
+}
+
+/* Add button styling */
+.btn-add-lead {
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    border: none;
+    background-color: rgba(13, 110, 253, 0.1);
+    color: #0d6efd;
+    transition: all 0.2s ease;
+}
+
+.btn-add-lead:hover {
+    background-color: rgba(13, 110, 253, 0.2);
+} 
+
+
+
