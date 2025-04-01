@@ -51,7 +51,8 @@
                         <p class="small fw-semibold text-dark">Working Hours</p>
                         <p class="h5 fw-bold text-dark" id="workingHours">
                             @if ($attendance && $attendance->check_in_time && $attendance->check_out_time)
-                                {{ \Carbon\Carbon::parse($attendance->check_in_time)->diff(\Carbon\Carbon::parse($attendance->check_out_time))->format('%H:%I') }} hrs
+                                {{ \Carbon\Carbon::parse($attendance->check_in_time)->diff(\Carbon\Carbon::parse($attendance->check_out_time))->format('%H:%I') }}
+                                hrs
                             @else
                                 --
                             @endif
@@ -101,7 +102,8 @@
                         <div class="modal-body">
                             <form id="lateReasonForm">
                                 <div class="mb-3">
-                                    <label for="lateReason" class=" form-label text-start d-block">Please provide reason for being late</label>
+                                    <label for="lateReason" class=" form-label text-start d-block">Please provide reason for
+                                        being late</label>
                                     <textarea class="form-control" id="lateReason" rows="3" required></textarea>
                                 </div>
                             </form>
@@ -305,7 +307,8 @@
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="expected_amount" class=" form-label text-start d-block">Expected Amount</label>
+                                    <label for="expected_amount" class=" form-label text-start d-block">Expected
+                                        Amount</label>
                                     <input type="number" name="expected_amount" id="expected_amount"
                                         class="form-control" min="0" step="0.01" required>
                                 </div>
@@ -482,155 +485,193 @@
 
         <script src="{{ asset('js/dashboard.js') }}"></script>
         <script>
-          
-           
-     // Location tracking variables
-let map, marker, locationUpdateInterval, isTracking = false, lastLocationUpdate = null;
-let retryCount = 0, maxRetries = 3; // Retry limit for failed requests
+            // Location tracking variables
+            let map, marker, locationUpdateInterval, isTracking = false,
+                lastLocationUpdate = null;
+            let retryCount = 0,
+                maxRetries = 3; // Retry limit for failed requests
 
-// Initialize Google Map
-function initMap() {
-    map = new google.maps.Map(document.getElementById('locationMap'), {
-        zoom: 15,
-        center: { lat: 0, lng: 0 }
-    });
-    marker = new google.maps.Marker({
-        map: map,
-        position: { lat: 0, lng: 0 }
-    });
-}
-
-// Get and update location immediately
-function getCurrentLocation(callback) {
-    if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                const { latitude, longitude, accuracy } = position.coords;
-                updateLocation(position);
-                callback(latitude, longitude, accuracy);
-            },
-            function(error) {
-                console.error('Geolocation error:', error.message);
-                callback(null, null, null);
-            },
-            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-        );
-    } else {
-        console.error('Geolocation not supported');
-        callback(null, null, null);
-    }
-}
-
-// Update location and UI
-function updateLocation(position) {
-    try {
-        const { latitude, longitude } = position.coords;
-        const location = { lat: latitude, lng: longitude };
-
-        // Update map and marker
-        map.setCenter(location);
-        marker.setPosition(location);
-
-        // Update UI
-        document.getElementById('currentLocation').textContent = 
-            `Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`;
-    } catch (error) {
-        console.error('Error updating location:', error);
-    }
-}
-
-// Check-in function
-function checkIn() {
-    const checkInBtn = document.getElementById('checkInButton');
-    checkInBtn.disabled = true;
-    checkInBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Checking in...';
-    
-    getCurrentLocation((latitude, longitude, accuracy) => {
-        sendCheckInData(latitude, longitude, accuracy);
-    });
-}
-
-function sendCheckInData(latitude, longitude, accuracy) {
-    $.ajax({
-        url: '/salesperson/attendance/checkin',
-        method: 'POST',
-        data: {
-            check_in_location: JSON.stringify({ latitude, longitude, accuracy, timestamp: new Date().toISOString() }),
-            _token: '{{ csrf_token() }}'
-        },
-        success: function(response) {
-            if (response.success) {
-                let checkInTimeFormatted = new Date(response.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                document.getElementById('checkOutTime').textContent = response.time;
-                document.getElementById('checkInButton').style.display = 'none';
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Checked In Successfully!',
-                    text: response.message,
-                    timer: 2000,
-                    showConfirmButton: false
+            // Initialize Google Map
+            function initMap() {
+                map = new google.maps.Map(document.getElementById('locationMap'), {
+                    zoom: 15,
+                    center: {
+                        lat: 0,
+                        lng: 0
+                    }
                 });
-                location.reload();
-            }
-        },
-        complete: function() {
-            document.getElementById('checkInButton').disabled = false;
-            document.getElementById('checkInButton').innerHTML = '<i class="fas fa-sign-in-alt me-2"></i> Check In';
-        }
-    });
-}
-
-// Check-out function
-function checkOut() {
-    const checkOutBtn = document.getElementById('checkOutButton');
-    checkOutBtn.disabled = true;
-    checkOutBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Checking out...';
-    
-    getCurrentLocation((latitude, longitude, accuracy) => {
-        sendCheckOutData(latitude, longitude, accuracy);
-    });
-}
-
-function sendCheckOutData(latitude, longitude, accuracy) {
-    $.ajax({
-        url: '/salesperson/attendance/checkout',
-        method: 'POST',
-        data: {
-            check_out_location: JSON.stringify({ latitude, longitude, accuracy, timestamp: new Date().toISOString() }),
-            _token: '{{ csrf_token() }}'
-        },
-        success: function(response) {
-            if (response.success) {
-                let checkOutTimeFormatted = new Date(response.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        // ✅ Directly set check-out time from response
-                document.getElementById('checkOutTime').textContent = response.time;
-                document.getElementById('workingHours').textContent = response.working_hours + 'hrs';
-      
-                
-                let checkInTime = new Date(response.check_in_time);
-                let checkOutTime = new Date(response.check_out_time);
-                let workingHours = Math.floor((checkOutTime - checkInTime) / (1000 * 60 * 60));
-                let workingMinutes = Math.floor(((checkOutTime - checkInTime) % (1000 * 60 * 60)) / (1000 * 60));
-             
-                
-                document.getElementById('checkOutButton').style.display = 'none';
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Checked Out Successfully!',
-                    text: `You checked out at ${response.time}. Total working hours: ${response.working_hours}`,
-                    timer: 2000,
-                    showConfirmButton: false
+                marker = new google.maps.Marker({
+                    map: map,
+                    position: {
+                        lat: 0,
+                        lng: 0
+                    }
                 });
-                
             }
-        },
-        complete: function() {
-            document.getElementById('checkOutButton').disabled = false;
-            document.getElementById('checkOutButton').innerHTML = '<i class="fas fa-sign-out-alt me-2"></i> Check Out';
-        }
-    });
-}
+
+            // Get and update location immediately
+            function getCurrentLocation(callback) {
+                if ("geolocation" in navigator) {
+                    navigator.geolocation.getCurrentPosition(
+                        function(position) {
+                            const {
+                                latitude,
+                                longitude,
+                                accuracy
+                            } = position.coords;
+                            updateLocation(position);
+                            callback(latitude, longitude, accuracy);
+                        },
+                        function(error) {
+                            console.error('Geolocation error:', error.message);
+                            callback(null, null, null);
+                        }, {
+                            enableHighAccuracy: true,
+                            timeout: 5000,
+                            maximumAge: 0
+                        }
+                    );
+                } else {
+                    console.error('Geolocation not supported');
+                    callback(null, null, null);
+                }
+            }
+
+            // Update location and UI
+            function updateLocation(position) {
+                try {
+                    const {
+                        latitude,
+                        longitude
+                    } = position.coords;
+                    const location = {
+                        lat: latitude,
+                        lng: longitude
+                    };
+
+                    // Update map and marker
+                    map.setCenter(location);
+                    marker.setPosition(location);
+
+                    // Update UI
+                    document.getElementById('currentLocation').textContent =
+                        `Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`;
+                } catch (error) {
+                    console.error('Error updating location:', error);
+                }
+            }
+
+            // Check-in function
+            function checkIn() {
+                const checkInBtn = document.getElementById('checkInButton');
+                checkInBtn.disabled = true;
+                checkInBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Checking in...';
+
+                getCurrentLocation((latitude, longitude, accuracy) => {
+                    sendCheckInData(latitude, longitude, accuracy);
+                });
+            }
+
+            function sendCheckInData(latitude, longitude, accuracy) {
+                $.ajax({
+                    url: '/salesperson/attendance/checkin',
+                    method: 'POST',
+                    data: {
+                        check_in_location: JSON.stringify({
+                            latitude,
+                            longitude,
+                            accuracy,
+                            timestamp: new Date().toISOString()
+                        }),
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            let checkInTimeFormatted = new Date(response.check_in_time).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                            document.getElementById('checkOutTime').textContent = response.time;
+                            document.getElementById('checkInButton').style.display = 'none';
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Checked In Successfully!',
+                                text: response.message,
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                            location.reload();
+                        }
+                    },
+                    complete: function() {
+                        document.getElementById('checkInButton').disabled = false;
+                        document.getElementById('checkInButton').innerHTML =
+                            '<i class="fas fa-sign-in-alt me-2"></i> Check In';
+                    }
+                });
+            }
+
+            // Check-out function
+            function checkOut() {
+                const checkOutBtn = document.getElementById('checkOutButton');
+                checkOutBtn.disabled = true;
+                checkOutBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Checking out...';
+
+                getCurrentLocation((latitude, longitude, accuracy) => {
+                    sendCheckOutData(latitude, longitude, accuracy);
+                });
+            }
+
+            function sendCheckOutData(latitude, longitude, accuracy) {
+                $.ajax({
+                    url: '/salesperson/attendance/checkout',
+                    method: 'POST',
+                    data: {
+                        check_out_location: JSON.stringify({
+                            latitude,
+                            longitude,
+                            accuracy,
+                            timestamp: new Date().toISOString()
+                        }),
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            let checkOutTimeFormatted = new Date(response.check_out_time).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                            // ✅ Directly set check-out time from response
+                            document.getElementById('checkOutTime').textContent = response.time;
+                            document.getElementById('workingHours').textContent = response.working_hours + 'hrs';
+
+
+                            let checkInTime = new Date(response.check_in_time);
+                            let checkOutTime = new Date(response.check_out_time);
+                            let workingHours = Math.floor((checkOutTime - checkInTime) / (1000 * 60 * 60));
+                            let workingMinutes = Math.floor(((checkOutTime - checkInTime) % (1000 * 60 * 60)) / (
+                                1000 * 60));
+
+
+                            document.getElementById('checkOutButton').style.display = 'none';
+
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Checked Out Successfully!',
+                                text: `You checked out at ${response.time}. Total working hours: ${response.working_hours}`,
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+
+                        }
+                    },
+                    complete: function() {
+                        document.getElementById('checkOutButton').disabled = false;
+                        document.getElementById('checkOutButton').innerHTML =
+                            '<i class="fas fa-sign-out-alt me-2"></i> Check Out';
+                    }
+                });
+            }
 
             // Show late reason modal
             function showLateReasonModal() {
@@ -691,11 +732,6 @@ function sendCheckOutData(latitude, longitude, accuracy) {
                 modal.show();
             }
 
-            function closeModal(modalId) {
-                const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
-                modal.hide();
-            }
-
             // lead open management
             function openLeadModal(leadId = null) {
                 const modal = document.getElementById('leadModal');
@@ -744,21 +780,17 @@ function sendCheckOutData(latitude, longitude, accuracy) {
 
                 new bootstrap.Modal(modal).show();
             }
-
-
-
-            function submitLeadForm(event) {
+            
+            // Lead Form Submission
+            document.getElementById('addLeadForm').addEventListener('submit', function(event) {
                 event.preventDefault();
-                const form = event.target;
-                const leadId = form.dataset.leadId;
-                const url = leadId ? `/salesperson/leads/${leadId}` : '/salesperson/leads';
-                const method = leadId ? 'PUT' : 'POST';
+
+                const form = this;
+                const leadId = document.getElementById('lead_id').value;
+                const url = '/salesperson/leads';
+                const method = 'POST';
 
                 const formData = new FormData(form);
-                const data = Object.fromEntries(formData.entries());
-
-                // Add CSRF token
-                data._token = '{{ csrf_token() }}';
 
                 fetch(url, {
                         method: method,
@@ -766,7 +798,7 @@ function sendCheckOutData(latitude, longitude, accuracy) {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
-                        body: JSON.stringify(data)
+                        body: JSON.stringify(Object.fromEntries(formData.entries()))
                     })
                     .then(response => response.json())
                     .then(result => {
@@ -795,59 +827,10 @@ function sendCheckOutData(latitude, longitude, accuracy) {
                             text: 'Failed to save lead. Please try again.'
                         });
                     });
-
-            }
-
-            function deleteLead(leadId) {
-                Swal.fire({
-                    title: 'Are you sure?',
-                    text: "You won't be able to revert this!",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#3085d6',
-                    cancelButtonColor: '#d33',
-                    confirmButtonText: 'Yes, delete it!'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        fetch(`/salesperson/leads/${leadId}`, {
-                                method: 'DELETE',
-                                headers: {
-                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                                }
-                            })
-                            .then(response => response.json())
-                            .then(result => {
-                                if (result.success) {
-                                    Swal.fire({
-                                        icon: 'success',
-                                        title: 'Deleted!',
-                                        text: result.message,
-                                        timer: 1500,
-                                        showConfirmButton: false
-                                    });
-                                    location.reload();
-                                } else {
-                                    Swal.fire({
-                                        icon: 'error',
-                                        title: 'Error!',
-                                        text: result.message || 'Failed to delete lead'
-                                    });
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Error:', error);
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Error!',
-                                    text: 'Failed to delete lead. Please try again.'
-                                });
-                            });
-                    }
-                });
-            }
+            });
 
             function editLead(leadId) {
-                $.get(`/salesperson/leads/${leadId}`, function (lead) {
+                $.get(`/salesperson/leads/${leadId}`, function(lead) {
                     Swal.fire({
                         width: '700px',
                         title: 'Edit Lead',
@@ -926,7 +909,8 @@ function sendCheckOutData(latitude, longitude, accuracy) {
                                 method: 'PUT',
                                 headers: {
                                     'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                    'X-CSRF-TOKEN': document.querySelector(
+                                        'meta[name="csrf-token"]').content
                                 },
                                 data: JSON.stringify(data)
                             }).then(response => {
@@ -955,7 +939,7 @@ function sendCheckOutData(latitude, longitude, accuracy) {
                             text: error.message || 'Failed to update lead. Please try again.'
                         });
                     });
-                }).fail(function () {
+                }).fail(function() {
                     Swal.fire({
                         icon: 'error',
                         title: 'Error!',
@@ -963,54 +947,54 @@ function sendCheckOutData(latitude, longitude, accuracy) {
                     });
                 });
             }
-            // Lead Form Submission
-            document.getElementById('addLeadForm').addEventListener('submit', function(event) {
-                event.preventDefault();
-
-                const form = this;
-                const leadId = document.getElementById('lead_id').value;
-                const url = '/salesperson/leads';
-                const method = 'POST';
-
-                const formData = new FormData(form);
-
-                fetch(url, {
-                        method: method,
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
-                        body: JSON.stringify(Object.fromEntries(formData.entries()))
-                    })
-                    .then(response => response.json())
-                    .then(result => {
-                        if (result.success) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Success!',
-                                text: result.message,
-                                timer: 1500,
-                                showConfirmButton: false
+         
+            function deleteLead(leadId) {
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: "You won't be able to revert this!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes, delete it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch(`/salesperson/leads/${leadId}`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                }
+                            })
+                            .then(response => response.json())
+                            .then(result => {
+                                if (result.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Deleted!',
+                                        text: result.message,
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    });
+                                    location.reload();
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error!',
+                                        text: result.message || 'Failed to delete lead'
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error!',
+                                    text: 'Failed to delete lead. Please try again.'
+                                });
                             });
-                            location.reload();
-                        } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error!',
-                                text: result.message || 'Failed to save lead'
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error!',
-                            text: 'Failed to save lead. Please try again.'
-                        });
-                    });
-            });
-
+                    }
+                });
+            }
 
             // Task Form Submission
             document.getElementById('addTaskForm').addEventListener('submit', function(event) {
@@ -1054,59 +1038,56 @@ function sendCheckOutData(latitude, longitude, accuracy) {
             });
 
 
-            // Initialize Dragula for lead status changes
-            const containers = document.querySelectorAll('[id="status-"]');
-            dragula(containers, {
-            moves: function(el) {
-                return el.classList.contains('cursor-move');
-            },
-            accepts: function(el, target) {
-                return target.id !== el.parentNode.id;
-            },
-            direction: 'horizontal',
-            revertOnSpill: true
-            }).on('drop', function(el, target) {
-                const leadId = el.dataset.leadId;
-                const newStatusId = target.id.replace('status-', '');
+            function submitLeadForm(event) {
+                event.preventDefault();
+                const form = event.target;
+                const leadId = form.dataset.leadId;
+                const url = leadId ? `/salesperson/leads/${leadId}` : '/salesperson/leads';
+                const method = leadId ? 'PUT' : 'POST';
 
-                fetch(`/salesperson/leads/${leadId}/status`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({
-                        status_id: newStatusId,
-                        _token: '{{ csrf_token() }}'
+                const formData = new FormData(form);
+                const data = Object.fromEntries(formData.entries());
+
+                // Add CSRF token
+                data._token = '{{ csrf_token() }}';
+
+                fetch(url, {
+                        method: method,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify(data)
                     })
-                })
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Success!',
-                        text: result.message,
-                        timer: 1500,
-                        showConfirmButton: false
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: result.message,
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                            location.reload();
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error!',
+                                text: result.message || 'Failed to save lead'
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error!',
+                            text: 'Failed to save lead. Please try again.'
+                        });
                     });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error!',
-                        text: result.message || 'Failed to update lead status'
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error!',
-                    text: 'Failed to update lead status. Please try again.'
-                });
-            });
-            });
+
+            }
 
             // Event Modal
             function handleEventClick(info) {
