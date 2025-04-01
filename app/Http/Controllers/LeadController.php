@@ -34,8 +34,9 @@ class LeadController extends Controller
             $query->where('user_id', $user->id)
                 ->orderBy('created_at', 'desc');
         }])->get();
+        $leads = Lead::with('status')->get();
             
-        return view('dashboard.salesperson.leads.index', compact('leadStatuses'));
+        return view('dashboard.salesperson.leads.index', compact('leadStatuses', 'leads'));
     }
 
     /**

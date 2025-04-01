@@ -199,7 +199,6 @@
 </div>
 @endsection
 
-@push('scripts')
 <script>
 function saveLead() {
     const form = document.getElementById('leadForm');
@@ -265,4 +264,3 @@ function getStatusColor(status) {
     return colors[status] || 'primary';
 }
 </script>
-@endpush
