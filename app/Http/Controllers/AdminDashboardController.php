@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Yajra\DataTables\Facades\DataTables;
 
 class AdminDashboardController extends Controller
 {
@@ -316,43 +317,80 @@ class AdminDashboardController extends Controller
     */
    public function getAttendanceOverview(Request $request)
    {
-      $filter = $request->get('filter', 'month');
-      $days = match ($filter) {
-         'week' => 7,
-         'month' => 30,
-         'year' => 365,
-         default => 30
-      };
+      try {
+         $date = $request->get('date') ? Carbon::parse($request->get('date')) : Carbon::today();
+         $userId = $request->get('user_id');
+         $status = $request->get('status');
 
-      $present = [];
-      $absent = [];
-      $late = [];
-      $labels = [];
+         // Get salesperson role
+         $salespersonRole = Role::where('slug', 'salesperson')->first();
+         if (!$salespersonRole) {
+            throw new \Exception('Salesperson role not found');
+         }
 
-      for ($i = $days - 1; $i >= 0; $i--) {
-         $date = Carbon::now()->subDays($i);
-         $labels[] = $date->format('M d');
+         $query = Attendance::query();
 
-         // Get attendance counts for this date
-         $attendance = DB::table('attendances')
+         if ($userId) {
+            $query->where('user_id', $userId);
+         }
+
+         if ($status) {
+            $query->where('status', $status);
+         }
+
+         // Get total users for percentage calculation
+         $totalUsers = User::where('role_id', $salespersonRole->id)->count();
+
+         // Get today's stats
+         $todayStats = $query->clone()
             ->whereDate('date', $date)
-            ->select('status', DB::raw('count(*) as count'))
+            ->selectRaw('status, COUNT(*) as count')
             ->groupBy('status')
-            ->get()
             ->pluck('count', 'status')
             ->toArray();
 
-         $present[] = $attendance['present'] ?? 0;
-         $absent[] = $attendance['absent'] ?? 0;
-         $late[] = $attendance['late'] ?? 0;
-      }
+         $presentToday = $todayStats['present'] ?? 0;
+         $absentToday = $todayStats['absent'] ?? 0;
+         $lateToday = $todayStats['late'] ?? 0;
 
-      return response()->json([
-         'labels' => $labels,
-         'present' => $present,
-         'absent' => $absent,
-         'late' => $late
-      ]);
+         // Get historical data for charts
+         $days = 30;
+         $labels = [];
+         $present = [];
+         $absent = [];
+         $late = [];
+
+         for ($i = $days - 1; $i >= 0; $i--) {
+            $currentDate = $date->copy()->subDays($i);
+            $labels[] = $currentDate->format('M d');
+
+            $dailyStats = $query->clone()
+               ->whereDate('date', $currentDate)
+               ->selectRaw('status, COUNT(*) as count')
+               ->groupBy('status')
+               ->pluck('count', 'status')
+               ->toArray();
+
+            $present[] = $dailyStats['present'] ?? 0;
+            $absent[] = $dailyStats['absent'] ?? 0;
+            $late[] = $dailyStats['late'] ?? 0;
+         }
+
+         return response()->json([
+            'labels' => $labels,
+            'present' => $present,
+            'absent' => $absent,
+            'late' => $late,
+            'todayAttendance' => $totalUsers > 0 ? round(($presentToday / $totalUsers) * 100) : 0,
+            'presentCount' => $presentToday,
+            'absentCount' => $absentToday,
+            'lateCount' => $lateToday
+         ]);
+
+      } catch (\Exception $e) {
+         Log::error('Error in attendance overview: ' . $e->getMessage());
+         return response()->json(['error' => 'Failed to load attendance data'], 500);
+      }
    }
 
    /**
@@ -512,29 +550,213 @@ class AdminDashboardController extends Controller
     */
    public function attendance(Request $request)
    {
-      $date = $request->get('date', now()->format('Y-m-d'));
-      $attendances = Attendance::with('user')
-         ->whereDate('date', $date)
-         ->get();
+      try {
+         // Get salesperson role first
+         $salespersonRole = Role::where('slug', 'salesperson')->first();
+         if (!$salespersonRole) {
+            throw new \Exception('Salesperson role not found');
+         }
+         
+         // Get users with salesperson role
+         $users = User::where('role_id', $salespersonRole->id)->get();
+         
+         // Get today's stats
+         $today = Carbon::today();
+         $totalUsers = $users->count();
+         
+         $todayAttendance = Attendance::whereDate('date', $today)->get();
+         $presentToday = $todayAttendance->where('status', 'present')->count();
+         $absentToday = $todayAttendance->where('status', 'absent')->count();
+         $lateToday = $todayAttendance->where('status', 'late')->count();
+         
+         $todayAttendancePercentage = $totalUsers > 0 
+             ? round(($presentToday / $totalUsers) * 100) 
+             : 0;
 
-      if ($request->wantsJson()) {
-         return response()->json($attendances);
+         // Handle DataTables AJAX request
+         if ($request->ajax()) {
+            $query = Attendance::with('user');
+            
+            // Apply filters if provided
+            if ($request->get('user_id')) {
+                $query->where('user_id', $request->get('user_id'));
+            }
+            if ($request->get('date')) {
+                $query->whereDate('date', $request->get('date'));
+            }
+            if ($request->get('status')) {
+                $query->where('status', $request->get('status'));
+            }
+
+            return DataTables::of($query)
+                ->addColumn('user_name', function($attendance) {
+                    return $attendance->user->name ?? 'N/A';
+                })
+                ->addColumn('formatted_date', function($attendance) {
+                    return Carbon::parse($attendance->date)->format('M d, Y');
+                })
+                ->addColumn('formatted_status', function($attendance) {
+                    $statusClass = [
+                        'present' => 'success',
+                        'absent' => 'danger',
+                        'late' => 'warning'
+                    ][$attendance->status];
+                    
+                    return '<span class="badge bg-'.$statusClass.'-subtle text-'.$statusClass.'">'.
+                        ucfirst($attendance->status).'</span>';
+                })
+                ->addColumn('formatted_check_in', function($attendance) {
+                    return $attendance->check_in ? Carbon::parse($attendance->check_in)->format('h:i A') : '-';
+                })
+                ->addColumn('formatted_check_out', function($attendance) {
+                    return $attendance->check_out ? Carbon::parse($attendance->check_out)->format('h:i A') : '-';
+                })
+                ->addColumn('action', function($attendance) {
+                    return '<button class="btn btn-sm btn-light edit-attendance" data-id="'.$attendance->id.'">
+                        <i class="fas fa-edit"></i>
+                    </button>';
+                })
+                ->rawColumns(['formatted_status', 'action'])
+                ->make(true);
+         }
+
+         // Get attendance data for charts
+         $chartData = $this->getAttendanceChartData();
+
+         return view('dashboard.admin.attendance', [
+             'users' => $users,
+             'todayAttendance' => $todayAttendancePercentage,
+             'presentCount' => $presentToday,
+             'absentCount' => $absentToday,
+             'lateCount' => $lateToday,
+             'chartData' => $chartData
+         ]);
+
+      } catch (\Exception $e) {
+          Log::error('Error in attendance page: ' . $e->getMessage());
+          return back()->with('error', 'An error occurred while loading the attendance page.');
+      }
+   }
+
+   private function getAttendanceChartData()
+   {
+      $days = 30;
+      $labels = [];
+      $present = [];
+      $absent = [];
+      $late = [];
+
+      for ($i = $days - 1; $i >= 0; $i--) {
+          $date = Carbon::today()->subDays($i);
+          $labels[] = $date->format('M d');
+
+          $dailyStats = Attendance::whereDate('date', $date)
+              ->selectRaw('status, COUNT(*) as count')
+              ->groupBy('status')
+              ->pluck('count', 'status')
+              ->toArray();
+
+          $present[] = $dailyStats['present'] ?? 0;
+          $absent[] = $dailyStats['absent'] ?? 0;
+          $late[] = $dailyStats['late'] ?? 0;
       }
 
-      return view('admin.attendance.index', compact('attendances', 'date'));
+      return [
+          'labels' => $labels,
+          'present' => $present,
+          'absent' => $absent,
+          'late' => $late
+      ];
+   }
+
+   public function showAttendance(Attendance $attendance)
+   {
+      return response()->json($attendance);
+   }
+
+   public function updateAttendance(Request $request, Attendance $attendance)
+   {
+      $validated = $request->validate([
+         'status' => ['required', 'string', 'in:present,absent,late'],
+         'check_in' => ['nullable', 'date_format:H:i'],
+         'check_out' => ['nullable', 'date_format:H:i'],
+      ]);
+
+      $attendance->update($validated);
+
+      return response()->json([
+         'message' => 'Attendance updated successfully',
+         'attendance' => $attendance
+      ]);
    }
 
    public function exportAttendance(Request $request)
    {
-      $startDate = $request->get('start_date', now()->startOfMonth());
-      $endDate = $request->get('end_date', now()->endOfMonth());
+      try {
+         $fileName = 'attendance_' . Carbon::now()->format('Y_m_d_His') . '.csv';
+         
+         $headers = [
+             'Content-Type' => 'text/csv',
+             'Content-Disposition' => 'attachment; filename="' . $fileName . '"'
+         ];
 
-      $attendances = Attendance::with('user')
-         ->whereBetween('date', [$startDate, $endDate])
-         ->get();
+         $query = Attendance::with('user')
+             ->when($request->user_id, function ($query, $userId) {
+                 $query->where('user_id', $userId);
+             })
+             ->when($request->date, function ($query, $date) {
+                 $query->whereDate('date', $date);
+             })
+             ->when($request->status, function ($query, $status) {
+                 $query->where('status', $status);
+             })
+             ->orderBy('date', 'desc');
 
-      // Generate Excel/CSV file
-      // Implementation depends on your export library
+         $callback = function() use ($query) {
+             $file = fopen('php://output', 'w');
+             
+             // Add headers
+             fputcsv($file, [
+                 'Employee Name',
+                 'Date',
+                 'Status',
+                 'Check In Time',
+                 'Check Out Time',
+                 'Working Hours'
+             ]);
+
+             // Add data rows
+             $query->chunk(100, function($attendances) use ($file) {
+                 foreach ($attendances as $record) {
+                     // Format check in time
+                     $checkIn = $record->check_in ? Carbon::parse($record->check_in)->format('h:i A') : '-';
+                     
+                     // Format check out time
+                     $checkOut = $record->check_out ? Carbon::parse($record->check_out)->format('h:i A') : '-';
+                     
+                     // Get working hours from model attribute
+                     $workingHours = $record->working_hours ?? '-';
+
+                     fputcsv($file, [
+                         $record->user->name ?? 'N/A',
+                         Carbon::parse($record->date)->format('M d, Y'),
+                         ucfirst($record->status),
+                         $checkIn,
+                         $checkOut,
+                         $workingHours
+                     ]);
+                 }
+             });
+
+             fclose($file);
+         };
+
+         return response()->stream($callback, 200, $headers);
+
+      } catch (\Exception $e) {
+          Log::error('Error exporting attendance: ' . $e->getMessage());
+          return back()->with('error', 'Failed to export attendance data.');
+      }
    }
 
    public function bulkUpdateAttendance(Request $request)

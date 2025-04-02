@@ -39,9 +39,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Attendance Management
     Route::get('/attendance', [AdminDashboardController::class, 'attendance'])->name('attendance');
+    Route::get('/attendance/overview', [AdminDashboardController::class, 'getAttendanceOverview'])->name('attendance.overview');
+    Route::post('/attendance/bulk-update', [AdminDashboardController::class, 'bulkUpdateAttendance'])->name('attendance.bulk-update');
     Route::get('/attendance/export', [AdminDashboardController::class, 'exportAttendance'])->name('attendance.export');
-    Route::post('/attendance/bulk', [AdminDashboardController::class, 'bulkUpdateAttendance'])->name('attendance.bulk');
-    Route::get('/attendance/timeline', [AttendanceController::class, 'timeline'])->name('attendance.timeline');
+    Route::get('/attendance/{attendance}', [AdminDashboardController::class, 'showAttendance'])->name('attendance.show');
+    Route::put('/attendance/{attendance}', [AdminDashboardController::class, 'updateAttendance'])->name('attendance.update');
 
     // Sales Management
     Route::get('/sales', [AdminDashboardController::class, 'sales'])->name('sales');

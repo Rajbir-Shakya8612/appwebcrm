@@ -99,4 +99,44 @@ class Attendance extends Model
     {
         return $this->status === 'present' || $this->status === 'late';
     }
+
+    public function getCheckInAttribute($value)
+    {
+        return $value ? Carbon::parse($value)->format('H:i:s') : null;
+    }
+
+    public function getCheckOutAttribute($value)
+    {
+        return $value ? Carbon::parse($value)->format('H:i:s') : null;
+    }
+
+    public function setCheckInAttribute($value)
+    {
+        $this->attributes['check_in'] = $value ? Carbon::parse($value)->format('H:i:s') : null;
+    }
+
+    public function setCheckOutAttribute($value)
+    {
+        $this->attributes['check_out'] = $value ? Carbon::parse($value)->format('H:i:s') : null;
+    }
+
+    public function getWorkingHoursAttribute()
+    {
+        if (!$this->check_in || !$this->check_out) {
+            return null;
+        }
+
+        $checkIn = Carbon::parse($this->check_in);
+        $checkOut = Carbon::parse($this->check_out);
+
+        if ($checkOut <= $checkIn) {
+            return null;
+        }
+
+        $diffInMinutes = $checkIn->diffInMinutes($checkOut);
+        $hours = floor($diffInMinutes / 60);
+        $minutes = $diffInMinutes % 60;
+
+        return sprintf('%d:%02d', $hours, $minutes);
+    }
 }
