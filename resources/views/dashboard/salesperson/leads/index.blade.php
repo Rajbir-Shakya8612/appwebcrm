@@ -3,7 +3,34 @@
 @section('content')
 <div class="container-fluid">
     <div class="row">
-        <div class="col-12">
+        <div class="col-12"></div>
+            <div class="card mb-4">
+                <div class="card-body"></div>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div style="height: 400px;">
+                                <canvas id="leadStatusChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="lead-stats">
+                                <h4>Lead Statistics</h4>
+                                <div class="list-group">
+                                    @foreach($leadStatuses as $status)
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        {{ $status->name }}
+                                        <span class="badge bg-{{ $status->color }} rounded-pill">
+                                            {{ $leads->where('status_id', $status->id)->count() }}
+                                        </span>
+                                    </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">Leads Management</h3>
@@ -17,21 +44,20 @@
                     <!-- Lead Status Filter -->
                     <div class="row mb-4">
                         <div class="col-12">
-                            <div class="btn-group">
-                                <button type="button" class="btn btn-outline-primary" onclick="filterLeads('all')">All</button>
-                                <button type="button" class="btn btn-outline-primary" onclick="filterLeads('new')">New</button>
-                                <button type="button" class="btn btn-outline-primary" onclick="filterLeads('contacted')">Contacted</button>
-                                <button type="button" class="btn btn-outline-primary" onclick="filterLeads('qualified')">Qualified</button>
-                                <button type="button" class="btn btn-outline-primary" onclick="filterLeads('converted')">Converted</button>
-                                <button type="button" class="btn btn-outline-primary" onclick="filterLeads('lost')">Lost</button>
-                                <button type="button" class="btn btn-outline-primary" onclick="filterLeads('shared')">Shared</button>
+                            <div class="btn-group w-100">
+                                <button type="button" class="btn btn-primary active" data-status="all">All</button>
+                                @foreach($leadStatuses as $status)
+                                <button type="button" class="btn btn-{{ $status->color }}" data-status="{{ $status->id }}">
+                                    {{ $status->name }}
+                                </button>
+                                @endforeach
                             </div>
                         </div>
                     </div>
 
                     <!-- Leads Table -->
                     <div class="table-responsive">
-                        <table class="table table-bordered table-striped">
+                        <table class="table table-bordered table-striped" id="leadsTable">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -45,7 +71,7 @@
                             </thead>
                             <tbody>
                                 @forelse($leads as $lead)
-                                <tr>
+                                <tr data-status="{{ $lead->status_id }}">
                                     <td>{{ $lead->name }}</td>
                                     <td>
                                         <div>{{ $lead->phone }}</div>
@@ -56,20 +82,27 @@
                                         <div class="text-muted">{{ $lead->pincode }}</div>
                                     </td>
                                     <td>
-                                        <span class="badge bg-{{ getStatusColor($lead->status) }}">
-                                            {{ ucfirst($lead->status) }}
-                                        </span>
+                                        @php
+                                            $leadStatus = $lead->status()->first();
+                                        @endphp
+                                        @if($leadStatus)
+                                            <span class="badge" style="background-color: {{ $leadStatus->color }}">
+                                                {{ $leadStatus->name }}
+                                            </span>
+                                        @else
+                                            <span class="badge bg-secondary">Unknown</span>
+                                        @endif
                                     </td>
                                     <td>{{ number_format($lead->expected_amount) }}</td>
                                     <td>{{ $lead->follow_up_date ? $lead->follow_up_date->format('M d, Y') : '-' }}</td>
                                     <td>
-                                        <button class="btn btn-sm btn-info" onclick="viewLead({{ $lead->id }})">
+                                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#viewLeadModal" onclick="viewLeadDetails({{ $lead->id }})">
                                             <i class="fas fa-eye"></i>
                                         </button>
-                                        <button class="btn btn-sm btn-warning" onclick="editLead({{ $lead->id }})">
+                                        <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editLeadModal" onclick="editLeadDetails({{ $lead->id }})">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteLead({{ $lead->id }})">
+                                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteLeadConfirm({{ $lead->id }})">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
@@ -88,16 +121,39 @@
     </div>
 </div>
 
-<!-- New Lead Modal -->
-<div class="modal fade" id="newLeadModal" tabindex="-1">
+<!-- View Lead Modal -->
+<div class="modal fade" id="viewLeadModal" tabindex="-1" aria-labelledby="viewLeadModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">New Lead</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="viewLeadModalLabel">Lead Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="leadForm">
+                <div class="lead-details">
+                    <!-- Details will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Lead Modal -->
+<div class="modal fade" id="editLeadModal" tabindex="-1" aria-labelledby="editLeadModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editLeadModalLabel">Edit Lead</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editLeadForm">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="id" id="edit_lead_id">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
@@ -107,8 +163,8 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Phone</label>
-                                <input type="tel" class="form-control" name="phone">
+                                <label class="form-label">Phone <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" name="phone" required>
                             </div>
                         </div>
                     </div>
@@ -116,21 +172,48 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Email</label>
-                                <input type="email" class="form-control" name="email">
+                                <label class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" name="email" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Status</label>
-                                <select class="form-select" name="status">
-                                    <option value="new">New</option>
-                                    <option value="contacted">Contacted</option>
-                                    <option value="qualified">Qualified</option>
-                                    <option value="converted">Converted</option>
-                                    <option value="lost">Lost</option>
-                                    <option value="shared">Shared</option>
+                                <label class="form-label">Status <span class="text-danger">*</span></label>
+                                <select class="form-select" name="status_id" required>
+                                    @foreach($leadStatuses as $status)
+                                    <option value="{{ $status->id }}">{{ $status->name }}</option>
+                                    @endforeach
                                 </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Company <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="company" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Expected Amount <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" name="expected_amount" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Source <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="source" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Location</label>
+                                <input type="text" class="form-control" name="location">
                             </div>
                         </div>
                     </div>
@@ -138,44 +221,8 @@
                     <div class="row">
                         <div class="col-md-12">
                             <div class="mb-3">
-                                <label class="form-label">Address</label>
-                                <textarea class="form-control" name="address" rows="2"></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label class="form-label">Pincode</label>
-                                <input type="text" class="form-control" name="pincode" maxlength="10">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label class="form-label">Expected Amount</label>
-                                <input type="number" class="form-control" name="expected_amount">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label class="form-label">Follow-up Date</label>
-                                <input type="date" class="form-control" name="follow_up_date">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Source</label>
-                                <input type="text" class="form-control" name="source">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Location</label>
-                                <input type="text" class="form-control" name="location">
+                                <label class="form-label">Description <span class="text-danger">*</span></label>
+                                <textarea class="form-control" name="description" rows="3" required></textarea>
                             </div>
                         </div>
                     </div>
@@ -192,75 +239,524 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="saveLead()">Save Lead</button>
+                <button type="button" class="btn btn-primary" onclick="updateLead()">Update Lead</button>
             </div>
         </div>
     </div>
 </div>
+
+<!-- New Lead Modal -->
+<div class="modal fade" id="newLeadModal" tabindex="-1" aria-labelledby="newLeadModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newLeadModalLabel">Add New Lead</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newLeadForm">
+                    @csrf
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Phone <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" name="phone" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" name="email" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Status <span class="text-danger">*</span></label>
+                                <select class="form-select" name="status_id" required>
+                                    @foreach($leadStatuses as $status)
+                                    <option value="{{ $status->id }}">{{ $status->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Company <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="company" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Expected Amount <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" name="expected_amount" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Source <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="source" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Location</label>
+                                <input type="text" class="form-control" name="location">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label class="form-label">Description <span class="text-danger">*</span></label>
+                                <textarea class="form-control" name="description" rows="3" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label class="form-label">Notes</label>
+                                <textarea class="form-control" name="notes" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createLead()">Create Lead</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
-function saveLead() {
-    const form = document.getElementById('leadForm');
+// Initialize the chart
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('leadStatusChart').getContext('2d');
+    const statusData = {!! json_encode($leadStatuses->map(function($status) use ($leads) {
+        return [
+            'name' => $status->name,
+            'count' => $leads->where('status_id', $status->id)->count(),
+            'color' => $status->color
+        ];
+    })) !!};
+
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: statusData.map(item => item.name),
+            datasets: [{
+                data: statusData.map(item => item.count),
+                backgroundColor: [
+                    '#3B82F6', // Primary (New Lead)
+                    '#F59E0B', // Warning (Contacted)
+                    '#10B981', // Success (Qualified)
+                    '#8B5CF6', // Purple (Proposal Sent)
+                    '#EC4899', // Pink (Negotiation)
+                    '#059669', // Green (Closed Won)
+                    '#DC2626'  // Red (Closed Lost)
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        padding: 20,
+                        font: {
+                            size: 14
+                        }
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Lead Distribution by Status',
+                    font: {
+                        size: 16,
+                        weight: 'bold'
+                    },
+                    padding: {
+                        top: 10,
+                        bottom: 30
+                    }
+                }
+            }
+        }
+    });
+});
+
+// Filter leads by status
+document.querySelectorAll('.btn-group button[data-status]').forEach(button => {
+    button.addEventListener('click', function() {
+        const statusId = this.dataset.status;
+        
+        // Update active button
+        document.querySelectorAll('.btn-group button').forEach(btn => btn.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Filter table rows
+        document.querySelectorAll('#leadsTable tbody tr').forEach(row => {
+            if (statusId === 'all' || row.dataset.status === statusId) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+});
+
+// View lead details
+function viewLeadDetails(id) {
+    fetch(`/salesperson/leads/${id}`, {
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(lead => {
+        if (!lead) {
+            throw new Error('Lead data not found');
+        }
+
+        const detailsDiv = document.querySelector('#viewLeadModal .lead-details');
+        
+        detailsDiv.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <p><strong>Name:</strong> ${lead.name || '-'}</p>
+                        <p><strong>Email:</strong> ${lead.email || '-'}</p>
+                        <p><strong>Phone:</strong> ${lead.phone || '-'}</p>
+                        <p><strong>Company:</strong> ${lead.company || '-'}</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <p><strong>Status:</strong> <span class="badge bg-${lead.status ? lead.status.color : 'secondary'}">${lead.status ? lead.status.name : 'Unknown'}</span></p>
+                        <p><strong>Expected Amount:</strong> ${lead.expected_amount ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(lead.expected_amount) : '-'}</p>
+                        <p><strong>Source:</strong> ${lead.source || '-'}</p>
+                        <p><strong>Location:</strong> ${lead.location || '-'}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="mb-3">
+                        <p><strong>Description:</strong></p>
+                        <p>${lead.description || '-'}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="mb-3">
+                        <p><strong>Notes:</strong></p>
+                        <p>${lead.notes || '-'}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Show the modal
+        const viewModal = new bootstrap.Modal(document.getElementById('viewLeadModal'));
+        viewModal.show();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+            title: 'Error!',
+            text: 'Failed to load lead details. Please try again.',
+            icon: 'error'
+        });
+    });
+}
+
+// Edit lead
+function editLeadDetails(id) {
+    fetch(`/salesperson/leads/${id}`, {
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(lead => {
+        if (!lead) {
+            throw new Error('Lead data not found');
+        }
+
+        // Populate form fields
+        const form = document.getElementById('editLeadForm');
+        
+        // Set hidden ID field
+        document.getElementById('edit_lead_id').value = lead.id;
+        
+        // Populate text fields
+        const fields = [
+            'name', 'email', 'phone', 'company', 'description', 
+            'source', 'expected_amount', 'notes', 'location'
+        ];
+        
+        fields.forEach(field => {
+            const input = form.querySelector(`[name="${field}"]`);
+            if (input) {
+                input.value = lead[field] || '';
+            }
+        });
+        
+        // Set status dropdown
+        const statusSelect = form.querySelector('[name="status_id"]');
+        if (statusSelect && lead.status) {
+            statusSelect.value = lead.status.id;
+        }
+
+        // Show the modal
+        const editModal = new bootstrap.Modal(document.getElementById('editLeadModal'));
+        editModal.show();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+            title: 'Error!',
+            text: 'Failed to load lead details. Please try again.',
+            icon: 'error'
+        });
+    });
+}
+
+// Update lead
+function updateLead() {
+    const form = document.getElementById('editLeadForm');
+    const id = document.getElementById('edit_lead_id').value;
     const formData = new FormData(form);
     
-    fetch('{{ route("salesperson.leads.store") }}', {
+    // Add _method field for PUT request
+    formData.append('_method', 'PUT');
+    
+    fetch(`/salesperson/leads/${id}`, {
         method: 'POST',
         body: formData,
         headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
-            location.reload();
+            Swal.fire({
+                title: 'Success!',
+                text: 'Lead updated successfully',
+                icon: 'success'
+            }).then(() => {
+                location.reload();
+            });
         } else {
-            alert('Error creating lead');
+            throw new Error(data.message || 'Failed to update lead');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+            title: 'Error!',
+            text: error.message || 'Failed to update lead. Please try again.',
+            icon: 'error'
+        });
+    });
+}
+
+// Delete lead confirmation
+function deleteLeadConfirm(id) {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "You won't be able to revert this!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            deleteLead(id);
         }
     });
 }
 
-function viewLead(id) {
-    window.location.href = `{{ route("salesperson.leads.show", "") }}/${id}`;
-}
-
-function editLead(id) {
-    window.location.href = `{{ route("salesperson.leads.edit", "") }}/${id}`;
-}
-
+// Delete lead
 function deleteLead(id) {
-    if (confirm('Are you sure you want to delete this lead?')) {
-        fetch(`{{ route("salesperson.leads.destroy", "") }}/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
+    fetch(`/salesperson/leads/${id}`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            Swal.fire({
+                title: 'Deleted!',
+                text: 'Lead has been deleted successfully.',
+                icon: 'success'
+            }).then(() => {
                 location.reload();
-            } else {
-                alert('Error deleting lead');
-            }
+            });
+        } else {
+            throw new Error(data.message || 'Failed to delete lead');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+            title: 'Error!',
+            text: error.message || 'Failed to delete lead. Please try again.',
+            icon: 'error'
         });
+    });
+}
+
+// Close modal and remove backdrop
+function closeModal(modalId) {
+    const modalElement = document.getElementById(modalId);
+    const modal = bootstrap.Modal.getInstance(modalElement);
+    if (modal) {
+        modal.hide();
     }
 }
 
-function filterLeads(status) {
-    window.location.href = `{{ route("salesperson.leads.index") }}?status=${status}`;
-}
+// Update the modal close buttons to use the closeModal function
+document.querySelectorAll('.btn-close[data-bs-dismiss="modal"]').forEach(button => {
+    button.addEventListener('click', function() {
+        closeModal(this.closest('.modal').id);
+    });
+});
 
-function getStatusColor(status) {
-    const colors = {
-        'new': 'primary',
-        'contacted': 'info',
-        'qualified': 'warning',
-        'converted': 'success',
-        'lost': 'danger',
-        'shared': 'secondary'
-    };
-    return colors[status] || 'primary';
+// Ensure backdrop is removed when modal is closed
+document.addEventListener('hidden.bs.modal', function (event) {
+    const modal = event.target;
+    if (modal.classList.contains('modal')) {
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) {
+            backdrop.remove();
+        }
+    }
+});
+
+// Create new lead
+function createLead() {
+    const form = document.getElementById('newLeadForm');
+    const formData = new FormData(form);
+    
+    // Validate form
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    // Show loading state
+    Swal.fire({
+        title: 'Creating Lead...',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    fetch('/salesperson/leads', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('newLeadModal'));
+            modal.hide();
+            
+            // Reset form
+            form.reset();
+            
+            // Show success message
+            Swal.fire({
+                title: 'Success!',
+                text: 'Lead created successfully',
+                icon: 'success'
+            }).then(() => {
+                location.reload();
+            });
+        } else {
+            throw new Error(data.message || 'Failed to create lead');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+            title: 'Error!',
+            text: error.message || 'Failed to create lead. Please try again.',
+            icon: 'error'
+        });
+    });
 }
 </script>
+@endpush

@@ -93,7 +93,6 @@ Route::middleware(['auth', 'salesperson'])->prefix('salesperson')->group(functio
     Route::get('/salesperson-dashboard', [SalespersonDashboardController::class, 'index'])
         ->name('salesperson.dashboard');
 
-    Route::get('/leads', [LeadController::class, 'index'])->name('salesperson.leads');
     Route::get('/sales', [SaleController::class, 'index'])->name('salesperson.sales');
     Route::get('/attendance', [AttendanceController::class, 'index'])->name('salesperson.attendance');
     Route::get('/performance', [PerformanceController::class, 'index'])->name('salesperson.performance');
@@ -108,6 +107,7 @@ Route::middleware(['auth', 'salesperson'])->prefix('salesperson')->group(functio
     Route::get('/attendance/calendar-events', [AttendanceController::class, 'calendarEvents']);
 
     // Leads
+    Route::get('/leads', [LeadController::class, 'index'])->name('salesperson.leads.index');
     Route::post('/leads', [LeadController::class, 'store'])->name('salesperson.leads.store');
     Route::get('/leads/{lead}', [LeadController::class, 'show'])->name('salesperson.leads.show');
     Route::put('/leads/{lead}', [LeadController::class, 'update'])->name('salesperson.leads.update');

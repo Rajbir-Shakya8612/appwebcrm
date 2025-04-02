@@ -2,19 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\Models\Lead;
 use App\Models\User;
 use App\Models\Attendance;
 use App\Models\LeadStatus;
-use Illuminate\Http\Request;
 use App\Services\WhatsAppService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
-class LeadController extends Controller
+
+class AdminLeadController extends Controller
 {
+
     use AuthorizesRequests;
 
     protected $whatsappService;
@@ -29,25 +31,19 @@ class LeadController extends Controller
      */
     public function index()
     {
-        try {
-            $user = Auth::user();
-            $leadStatuses = LeadStatus::all();
-            $leads = Lead::with('status')
-                ->where('user_id', $user->id)
-                ->when(request('status'), function($query, $status) {
-                    if ($status !== 'all') {
-                        $query->whereHas('status', function($q) use ($status) {
-                            $q->where('id', $status);
-                        });
-                    }
-                })
-                ->orderBy('created_at', 'desc')
-                ->get();
-                
-            return view('dashboard.salesperson.leads.index', compact('leadStatuses', 'leads'));
-        } catch (\Exception $e) {
-            return back()->with('error', 'Error loading leads: ' . $e->getMessage());
-        }
+        $leads = Lead::with(['status', 'user'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+            
+        $leadStats = [
+            'new' => $leads->where('status', 'new')->count(),
+            'contacted' => $leads->where('status', 'contacted')->count(),
+            'qualified' => $leads->where('status', 'qualified')->count(),
+            'converted' => $leads->where('status', 'converted')->count(),
+            'lost' => $leads->where('status', 'lost')->count(),
+        ];
+            
+        return view('admin.leads.index', compact('leads', 'leadStats'));
     }
 
     /**
@@ -112,34 +108,23 @@ class LeadController extends Controller
                 $this->whatsappService->sendNewLeadNotification($admin, $lead);
             }
 
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Lead created successfully',
-                    'lead' => $lead->load('status')
-                ], 201);
-            }
-
-            return redirect()->route('salesperson.leads.index')
-                ->with('success', 'Lead created successfully');
+            return response()->json([
+                'success' => true,
+                'message' => 'Lead created successfully',
+                'lead' => $lead
+            ], 201);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $e->errors()
-                ], 422);
-            }
-            return back()->withErrors($e->errors())->withInput();
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Exception $e) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to create lead',
-                    'error' => $e->getMessage()
-                ], 500);
-            }
-            return back()->with('error', 'Failed to create lead: ' . $e->getMessage())->withInput();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create lead',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -148,25 +133,8 @@ class LeadController extends Controller
      */
     public function show(Lead $lead)
     {
-        try {
-            $this->authorize('view', $lead);
-            $lead->load('status');
-            
-            if (request()->wantsJson()) {
-                return response()->json($lead);
-            }
-            
-            return view('dashboard.salesperson.leads.show', compact('lead'));
-        } catch (\Exception $e) {
-            if (request()->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error loading lead details',
-                    'error' => $e->getMessage()
-                ], 500);
-            }
-            return back()->with('error', 'Error loading lead details: ' . $e->getMessage());
-        }
+        $this->authorize('view', $lead);
+        return response()->json($lead);
     }
 
     /**
@@ -198,13 +166,10 @@ class LeadController extends Controller
                 ->exists();
 
             if (!$todayAttendance) {
-                if ($request->wantsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'आप आज की अटेंडेंस लगाए बिना लीड अपडेट नहीं कर सकते।'
-                    ], 403);
-                }
-                return back()->with('error', 'आप आज की अटेंडेंस लगाए बिना लीड अपडेट नहीं कर सकते।');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'आप आज की अटेंडेंस लगाए बिना नई लीड नहीं जोड़ सकते।'
+                ], 403);
             }
 
             $lead->update([
@@ -227,38 +192,27 @@ class LeadController extends Controller
             );
 
             // If status changed to converted, send notification
-            if ($lead->wasChanged('status_id') && $lead->status->slug === 'converted') {
+            if ($lead->wasChanged('status') && $lead->status === 'converted') {
                 $this->whatsappService->sendLeadConversionNotification($lead->user, $lead);
             }
 
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Lead updated successfully',
-                    'lead' => $lead->load('status')
-                ]);
-            }
-
-            return redirect()->route('salesperson.leads.index')
-                ->with('success', 'Lead updated successfully');
+            return response()->json([
+                'success' => true,
+                'message' => 'Lead updated successfully',
+                'lead' => $lead
+            ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $e->errors()
-                ], 422);
-            }
-            return back()->withErrors($e->errors())->withInput();
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Exception $e) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to update lead',
-                    'error' => $e->getMessage()
-                ], 500);
-            }
-            return back()->with('error', 'Failed to update lead: ' . $e->getMessage())->withInput();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update lead',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -267,30 +221,14 @@ class LeadController extends Controller
      */
     public function destroy(Lead $lead)
     {
-        try {
-            $this->authorize('delete', $lead);
-            
-            $lead->delete();
+        $this->authorize('delete', $lead);
+        
+        $lead->delete();
 
-            if (request()->wantsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Lead deleted successfully'
-                ]);
-            }
-
-            return redirect()->route('salesperson.leads.index')
-                ->with('success', 'Lead deleted successfully');
-        } catch (\Exception $e) {
-            if (request()->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to delete lead',
-                    'error' => $e->getMessage()
-                ], 500);
-            }
-            return back()->with('error', 'Failed to delete lead: ' . $e->getMessage());
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Lead deleted successfully'
+        ]);
     }
 
     /**

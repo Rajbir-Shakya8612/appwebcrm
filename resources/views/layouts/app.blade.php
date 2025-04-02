@@ -40,8 +40,8 @@
                         <i class="fas fa-home"></i>
                         <span>Dashboard</span>
                     </a>
-                    <a href="{{ route('salesperson.leads') }}"
-                        class="sidebar-link {{ Request::routeIs('salesperson.leads') ? 'active' : '' }}">
+                    <a href="{{ route('salesperson.leads.index') }}"
+                        class="sidebar-link {{ Request::routeIs('salesperson.leads.index') ? 'active' : '' }}">
                         <i class="fas fa-users"></i>
                         <span>Leads</span>
                     </a>

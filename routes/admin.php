@@ -1,22 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\RoleController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminDashboardController;
-use App\Http\Controllers\SalespersonDashboardController;
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\AdminLeadController;
 use App\Http\Controllers\AttendanceController;
-use App\Http\Controllers\LocationController;
-use App\Http\Controllers\LeadController;
-use App\Http\Controllers\SaleController;
-use App\Http\Controllers\PerformanceController;
-use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\MeetingController;
-use App\Http\Controllers\PlanController;
-use App\Http\Controllers\LocationTrackController;
 use App\Http\Controllers\AdminLocationController;
 
 // adminroute
@@ -53,16 +40,16 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/sales/analytics', [AdminDashboardController::class, 'salesAnalytics'])->name('sales.analytics');
 
     // Leads Management
-    Route::get('/leads', [LeadController::class, 'index'])->name('leads');
-    Route::post('/leads', [LeadController::class, 'store'])->name('leads.store');
-    Route::get('/leads/{lead}', [LeadController::class, 'show'])->name('leads.show');
-    Route::put('/leads/{lead}', [LeadController::class, 'update'])->name('leads.update');
-    Route::delete('/leads/{lead}', [LeadController::class, 'destroy'])->name('leads.destroy');
-    Route::put('/leads/{lead}/status', [LeadController::class, 'updateStatus'])->name('leads.status');
-    Route::post('/leads/{lead}/follow-up', [LeadController::class, 'scheduleFollowUp'])->name('leads.follow-up');
-    Route::get('/leads/status/{status}', [LeadController::class, 'getLeadsByStatus'])->name('leads.by-status');
-    Route::get('/leads/stats', [LeadController::class, 'getLeadStats'])->name('leads.stats');
-    Route::get('/leads/export', [LeadController::class, 'export'])->name('leads.export');
+    Route::get('/leads', [AdminLeadController::class, 'index'])->name('leads');
+    Route::post('/leads', [AdminLeadController::class, 'store'])->name('leads.store');
+    Route::get('/leads/{lead}', [AdminLeadController::class, 'show'])->name('leads.show');
+    Route::put('/leads/{lead}', [AdminLeadController::class, 'update'])->name('leads.update');
+    Route::delete('/leads/{lead}', [AdminLeadController::class, 'destroy'])->name('leads.destroy');
+    Route::put('/leads/{lead}/status', [AdminLeadController::class, 'updateStatus'])->name('leads.status');
+    Route::post('/leads/{lead}/follow-up', [AdminLeadController::class, 'scheduleFollowUp'])->name('leads.follow-up');
+    Route::get('/leads/status/{status}', [AdminLeadController::class, 'getLeadsByStatus'])->name('leads.by-status');
+    Route::get('/leads/stats', [AdminLeadController::class, 'getLeadStats'])->name('leads.stats');
+    Route::get('/leads/export', [AdminLeadController::class, 'export'])->name('leads.export');
 
     // User management
     Route::get('/users', [AdminDashboardController::class, 'users'])->name('users');

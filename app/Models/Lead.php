@@ -34,6 +34,8 @@ class Lead extends Model
         'expected_value' => 'decimal:2'
     ];
 
+    protected $with = ['status'];
+
     /**
      * Get the user that owns the lead.
      */
