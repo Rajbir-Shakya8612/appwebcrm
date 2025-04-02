@@ -11,6 +11,9 @@
                 <div class="card-header">
                     <h3 class="card-title">Locations Management</h3>
                     <div class="card-tools">
+                        <a href="{{ route('admin.locations.timeline') }}" class="btn btn-info mr-2">
+                            <i class="fas fa-history"></i> View Timeline
+                        </a>
                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newLocationModal">
                             <i class="fas fa-plus"></i> New Location
                         </button>

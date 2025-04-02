@@ -335,7 +335,7 @@ class AttendanceController extends Controller
             ->orderBy('tracked_at')
             ->get();
 
-        return view('dashboard.salesperson.attendance.timeline', compact('locationTracks'));
+        return view('dashboard.admin.attendance.timeline', compact('locationTracks'));
     }
 
     private function sendLateNotification($user)

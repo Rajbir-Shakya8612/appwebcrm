@@ -44,6 +44,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/attendance/export', [AdminDashboardController::class, 'exportAttendance'])->name('attendance.export');
     Route::get('/attendance/{attendance}', [AdminDashboardController::class, 'showAttendance'])->name('attendance.show');
     Route::put('/attendance/{attendance}', [AdminDashboardController::class, 'updateAttendance'])->name('attendance.update');
+    Route::get('/attendance/timeline', [AttendanceController::class, 'timeline'])->name('attendance.timeline');
+
 
     // Sales Management
     Route::get('/sales', [AdminDashboardController::class, 'sales'])->name('sales');
@@ -79,6 +81,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('/tracks', [AdminLocationController::class, 'getLocationTracks'])->name('tracks');
         Route::get('/stats', [AdminLocationController::class, 'getLocationStats'])->name('stats');
         Route::get('/checked-in', [AdminLocationController::class, 'getCheckedInUsers'])->name('checked-in');
+        Route::get('/timeline', [AdminLocationController::class, 'timeline'])->name('timeline');
         
         // CRUD routes
         Route::get('/', [AdminLocationController::class, 'index'])->name('index');

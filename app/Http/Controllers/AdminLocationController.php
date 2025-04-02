@@ -251,4 +251,14 @@ class AdminLocationController extends Controller
             'data' => $users
         ]);
     }
+
+    public function timeline()
+    {
+        // Get all salespersons
+        $salespersons = User::whereHas('role', function($q) {
+            $q->where('slug', 'salesperson');
+        })->get();
+
+        return view('admin.locations.timeline', compact('salespersons'));
+    }
 } 
