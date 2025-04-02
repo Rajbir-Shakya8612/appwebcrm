@@ -62,10 +62,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // User management
     Route::get('/users', [AdminDashboardController::class, 'users'])->name('users');
-    Route::post('/users', [AdminDashboardController::class, 'createUser'])->name('users.create');
+    Route::post('/users', [AdminDashboardController::class, 'createUser'])->name('users.store');
     Route::get('/users/{user}', [AdminDashboardController::class, 'showUser'])->name('users.show');
     Route::put('/users/{user}', [AdminDashboardController::class, 'updateUser'])->name('users.update');
-    Route::delete('/users/{user}', [AdminDashboardController::class, 'deleteUser'])->name('users.delete');
+    Route::delete('/users/{user}', [AdminDashboardController::class, 'deleteUser'])->name('users.destroy');
 
     // Settings
     Route::get('/settings', [AdminDashboardController::class, 'settings'])->name('settings');

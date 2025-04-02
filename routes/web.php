@@ -146,12 +146,12 @@ Route::middleware(['auth', 'salesperson'])->prefix('salesperson')->group(functio
     Route::get('/plans/yearly', [PlanController::class, 'getYearlyPlan'])->name('salesperson.plans.yearly');
 
     // Task Routes
-    Route::get('/tasks', [TaskController::class, 'index'])->name('salesperson.tasks');
-    Route::post('/tasks', [TaskController::class, 'store'])->name('salesperson.tasks.store');
-    Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('salesperson.tasks.show');
-    Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('salesperson.tasks.update');
-    Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('salesperson.tasks.destroy');
-    Route::put('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('salesperson.tasks.status');
+    Route::get('/tasks', [AdminDashboardController::class, 'index'])->name('salesperson.tasks');
+    Route::post('/tasks', [AdminDashboardController::class, 'store'])->name('salesperson.tasks.store');
+    Route::get('/tasks/{task}', [AdminDashboardController::class, 'show'])->name('salesperson.tasks.show');
+    Route::put('/tasks/{task}', [AdminDashboardController::class, 'update'])->name('salesperson.tasks.update');
+    Route::delete('/tasks/{task}', [AdminDashboardController::class, 'destroy'])->name('salesperson.tasks.destroy');
+    Route::put('/tasks/{task}/status', [AdminDashboardController::class, 'updateStatus'])->name('salesperson.tasks.status');
 });
 
 

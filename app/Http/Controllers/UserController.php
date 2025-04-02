@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
@@ -13,7 +14,13 @@ class UserController extends Controller
     public function index()
     {
         $users = User::with('role')->get();
-        return response()->json($users);
+        $roles = \App\Models\Role::all();
+        
+        if (request()->wantsJson()) {
+            return response()->json($users);
+        }
+        
+        return view('admin.users.index', compact('users', 'roles'));
     }
 
     /**
@@ -21,7 +28,8 @@ class UserController extends Controller
      */
     public function create()
     {
-        //
+        $roles = \App\Models\Role::all();
+        return view('admin.users.create', compact('roles'));
     }
 
     /**
@@ -39,7 +47,7 @@ class UserController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'password' => bcrypt($request->password),
+            'password' => Hash::make($request->password),
             'role_id' => $request->role_id,
             'phone' => $request->phone,
             'photo' => $request->photo,
@@ -53,54 +61,107 @@ class UserController extends Controller
             'settings' => $request->settings,
             'target_amount' => $request->target_amount,
             'target_leads' => $request->target_leads,
+            'is_active' => true,
         ]);
 
-        return response()->json($user, 201);
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'User created successfully',
+                'user' => $user
+            ], 201);
+        }
+
+        return redirect()->route('admin.users')->with('success', 'User created successfully');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(string $id, User $user)
+    public function show(User $user)
     {
-        return response()->json($user);
+        $user->load('role');
+        
+        if (request()->wantsJson()) {
+            return response()->json($user);
+        }
+        
+        return view('admin.users.show', compact('user'));
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(User $user)
     {
-        //
+        $roles = \App\Models\Role::all();
+        return view('admin.users.edit', compact('user', 'roles'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id, User $user)
+    public function update(Request $request, User $user)
     {
         $request->validate([
+            'name' => 'required',
             'email' => 'required|email|unique:users,email,' . $user->id,
             'role_id' => 'required|exists:roles,id',
         ]);
 
-        $user->update($request->all());
+        $data = [
+            'name' => $request->name,
+            'email' => $request->email,
+            'role_id' => $request->role_id,
+            'is_active' => $request->is_active ?? $user->is_active,
+            'phone' => $request->phone,
+            'photo' => $request->photo,
+            'whatsapp_number' => $request->whatsapp_number,
+            'pincode' => $request->pincode,
+            'address' => $request->address,
+            'location' => $request->location,
+            'designation' => $request->designation,
+            'date_of_joining' => $request->date_of_joining,
+            'status' => $request->status ?? 'active',
+            'settings' => $request->settings,
+            'target_amount' => $request->target_amount,
+            'target_leads' => $request->target_leads,
+        ];
 
-        return response()->json($user);
+        if ($request->filled('password')) {
+            $request->validate([
+                'password' => 'min:6',
+            ]);
+            $data['password'] = Hash::make($request->password);
+        }
+
+        $user->update($data);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'User updated successfully',
+                'user' => $user
+            ]);
+        }
+
+        return redirect()->route('admin.users')->with('success', 'User updated successfully');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id, Request $request, User $user)
+    public function destroy(User $user)
     {
-        $request->validate([
-            'email' => 'required|email|unique:users,email,' . $user->id,
-            'role_id' => 'required|exists:roles,id',
-        ]);
+        $user->delete();
 
-        $user->update($request->all());
+        if (request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'User deleted successfully'
+            ]);
+        }
 
-        return response()->json($user);
+        return redirect()->route('admin.users')->with('success', 'User deleted successfully');
     }
 }

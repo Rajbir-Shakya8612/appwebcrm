@@ -210,8 +210,9 @@ class AdminDashboardController extends Controller
       if ($request->wantsJson()) {
          return response()->json($users);
       }
+      $roles = Role::all();
 
-      return view('admin.users.index', compact('users'));
+      return view('admin.users.index', compact('users','roles'));
    }
 
    /**
@@ -241,7 +242,7 @@ class AdminDashboardController extends Controller
          ], 201);
       }
 
-      return redirect()->route('admin.users.index')->with('success', 'User  created successfully');
+      return redirect()->route('admin.users')->with('success', 'User  created successfully');
    }
 
    /**
@@ -261,6 +262,7 @@ class AdminDashboardController extends Controller
          return response()->json($user);
       }
 
+      dd($user);
       return view('admin.users.show', compact('user'));
    }
 
@@ -306,7 +308,7 @@ class AdminDashboardController extends Controller
          ]);
       }
 
-      return redirect()->route('admin.users.index')->with('success', 'User  deleted successfully');
+      return redirect()->route('admin.users')->with('success', 'User  deleted successfully');
    }
 
    /**
