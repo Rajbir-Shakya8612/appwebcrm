@@ -25,6 +25,9 @@ return new class extends Migration
             $table->date('follow_up_date')->nullable();
             $table->string('source')->nullable();
             $table->string('location')->nullable();
+            $table->decimal('latitude', 10, 8)->nullable();
+            $table->decimal('longitude', 11, 8)->nullable();
+            $table->string('description')->nullable();
             $table->json('additional_info')->nullable(); // JSON column for extra details
             $table->string('company')->nullable();
             

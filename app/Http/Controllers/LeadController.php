@@ -7,11 +7,13 @@ use App\Models\Lead;
 use App\Models\User;
 use App\Models\Attendance;
 use App\Models\LeadStatus;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use App\Services\WhatsAppService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Notification as NotificationFacade;
 
 class LeadController extends Controller
 {
@@ -56,45 +58,53 @@ class LeadController extends Controller
     public function store(Request $request)
     {
         try {
-            $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|email|max:255',
-                'phone' => 'required|string|max:20',
-                'company' => 'required|string|max:255',
-                'description' => 'required|string',
-                'source' => 'required|string|max:255',
-                'expected_amount' => 'required|numeric|min:0',
-                'notes' => 'nullable|string',
-                'status_id' => 'required|exists:lead_statuses,id'
-            ]);
+            // Validate request
+            $validated = $request->validate(Lead::getValidationRules());
 
-            $user = Auth::user();
-            $today = now()->toDateString();
+            // Check attendance
+            $attendance = Attendance::where('user_id', Auth::id())
+                ->whereDate('date', now()->toDateString())
+                ->first();
 
-            // Check if the user has marked attendance today
-            $todayAttendance = Attendance::where('user_id', $user->id)
-                ->whereDate('date', $today)
-                ->exists();
-
-            if (!$todayAttendance) {
+            if (!$attendance) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'आप आज की अटेंडेंस लगाए बिना नई लीड नहीं जोड़ सकते।'
-                ], 403);
+                    'message' => 'Please mark your attendance before creating a lead.'
+                ], 422);
             }
 
+            // Create lead
             $lead = Lead::create([
                 'user_id' => Auth::id(),
-                'status_id' => $request->status_id,
-                'name' => $request->name,
-                'email' => $request->email,
-                'phone' => $request->phone,
-                'company' => $request->company,
-                'notes' => $request->description,
-                'source' => $request->source,
-                'expected_amount' => $request->expected_amount,
-                'notes' => $request->notes
+                'status_id' => $validated['status_id'],
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'],
+                'company' => $validated['company'],
+                'additional_info' => json_encode($validated['description']),
+                'description' => $validated['description'] ?? null,
+                'source' => $validated['source'] ?? null,
+                'expected_amount' => $validated['expected_amount'],
+                'notes' => $validated['notes'] ?? null,
+                'follow_up_date' => $validated['follow_up_date'],
+                'location' => $validated['location'],
+                'latitude' => $validated['latitude'],
+                'longitude' => $validated['longitude']
             ]);
+
+            // Send notification to admin
+            $admin = User::whereHas('role', function($query) {
+                $query->where('slug', 'admin');
+            })->first();
+
+            if ($admin) {
+                $message = "New lead created by " . Auth::user()->name . "\n";
+                $message .= "Name: " . $lead->name . "\n";
+                $message .= "Phone: " . $lead->phone . "\n";
+                $message .= "Expected Amount: " . $lead->expected_amount;
+                
+                $this->whatsappService->sendMessage($admin->phone, $message);
+            }
 
             // Create initial activity
             $lead->createActivity(
@@ -103,43 +113,30 @@ class LeadController extends Controller
                 Auth::user()
             );
 
-            // Send WhatsApp notification to admin
-            $admin = User::whereHas('role', function ($query) {
-                $query->where('name', 'admin');
-            })->first();
+            $this->whatsappService->sendNewLeadNotification($admin, $lead);
 
-            if ($admin) {
-                $this->whatsappService->sendNewLeadNotification($admin, $lead);
-            }
+            // Create follow-up notification
+            Notification::create([
+                'user_id' => Auth::id(),
+                'type' => 'lead_follow_up',
+                'title' => 'Lead Follow-up',
+                'message' => "Follow up with {$lead->name} on {$lead->follow_up_date->format('M d, Y')}",
+                'data' => ['lead_id' => $lead->id],
+                'notifiable_id' => $lead->id,
+                'notifiable_type' => Lead::class
+            ]);
 
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Lead created successfully',
-                    'lead' => $lead->load('status')
-                ], 201);
-            }
-
-            return redirect()->route('salesperson.leads.index')
-                ->with('success', 'Lead created successfully');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $e->errors()
-                ], 422);
-            }
-            return back()->withErrors($e->errors())->withInput();
+            return response()->json([
+                'success' => true,
+                'message' => 'Lead created successfully',
+                'lead' => $lead
+            ]);
         } catch (\Exception $e) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to create lead',
-                    'error' => $e->getMessage()
-                ], 500);
-            }
-            return back()->with('error', 'Failed to create lead: ' . $e->getMessage())->withInput();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create lead',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -175,54 +172,54 @@ class LeadController extends Controller
     public function update(Request $request, Lead $lead)
     {
         try {
-            $this->authorize('update', $lead);
+            // Validate request
+            $validated = $request->validate(Lead::getValidationRules(true, $lead->id));
 
-            $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|email|max:255',
-                'phone' => 'required|string|max:20',
-                'company' => 'required|string|max:255',
-                'description' => 'required|string',
-                'source' => 'required|string|max:255',
-                'expected_amount' => 'required|numeric|min:0',
-                'notes' => 'nullable|string',
-                'status_id' => 'required|exists:lead_statuses,id'
-            ]);
+            // Check attendance
+            $attendance = Attendance::where('user_id', Auth::id())
+                ->whereDate('date', now()->toDateString())
+                ->first();
 
-            $user = Auth::user();
-            $today = now()->toDateString();
-
-            // Check if the user has marked attendance today
-            $todayAttendance = Attendance::where('user_id', $user->id)
-                ->whereDate('date', $today)
-                ->exists();
-
-            if (!$todayAttendance) {
-                if ($request->wantsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'आप आज की अटेंडेंस लगाए बिना लीड अपडेट नहीं कर सकते।'
-                    ], 403);
-                }
-                return back()->with('error', 'आप आज की अटेंडेंस लगाए बिना लीड अपडेट नहीं कर सकते।');
+            if (!$attendance) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please mark your attendance before updating a lead.'
+                ], 422);
             }
 
+            // Handle additional_info - ensure it's proper JSON
+            $additionalInfo = $request->input('description');
+            if (is_string($additionalInfo)) {
+                $additionalInfo = json_decode($additionalInfo, true) ?? [];
+            }
+
+            // Get the old status before update
+            $oldStatusId = $lead->status_id;
+
+         
+
+            // Update lead
             $lead->update([
-                'name' => $request->name,
-                'email' => $request->email,
-                'phone' => $request->phone,
-                'company' => $request->company,
-                'notes' => $request->description,
-                'source' => $request->source,
-                'expected_amount' => $request->expected_amount,
-                'notes' => $request->notes,
-                'status_id' => $request->status_id
+                'status_id' => $validated['status_id'],
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'],
+                'company' => $validated['company'],
+                'additional_info' => $additionalInfo,
+                'source' => $validated['source'] ?? null,
+                'expected_amount' => $validated['expected_amount'],
+                'notes' => $validated['notes'] ?? null,
+                'description' => $validated['description'] ?? null,
+                'follow_up_date' => $validated['follow_up_date'],
+                'location' => $validated['location'],
+                'latitude' => $validated['latitude'],
+                'longitude' => $validated['longitude']
             ]);
 
-            // Create activity for the update
+            // Create initial activity
             $lead->createActivity(
-                'Lead Updated',
-                'Lead information was updated',
+                'Lead Created',
+                'Lead was added to the system',
                 Auth::user()
             );
 
@@ -230,35 +227,39 @@ class LeadController extends Controller
             if ($lead->wasChanged('status_id') && $lead->status->slug === 'converted') {
                 $this->whatsappService->sendLeadConversionNotification($lead->user, $lead);
             }
+            // Reload the lead with status relationship
+            $lead->load('status');
 
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Lead updated successfully',
-                    'lead' => $lead->load('status')
-                ]);
+            // Check if status changed to converted using status_id
+            $convertedStatusId = LeadStatus::where('slug', 'converted')->value('id');
+            
+            if ($convertedStatusId && $validated['status_id'] == $convertedStatusId && $oldStatusId != $convertedStatusId) {
+                $admin = User::whereHas('role', function($query) {
+                    $query->where('slug', 'admin');
+                })->first();
+
+                if ($admin) {
+                    $message = "Lead converted by " . Auth::user()->name . "\n";
+                    $message .= "Name: " . $lead->name . "\n";
+                    $message .= "Phone: " . $lead->phone . "\n";
+                    $message .= "Amount: " . $lead->expected_amount;
+                    
+                    $this->whatsappService->sendMessage($admin->phone, $message);
+                }
             }
 
-            return redirect()->route('salesperson.leads.index')
-                ->with('success', 'Lead updated successfully');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $e->errors()
-                ], 422);
-            }
-            return back()->withErrors($e->errors())->withInput();
+            return response()->json([
+                'success' => true,
+                'message' => 'Lead updated successfully',
+                'lead' => $lead
+            ]);
+            
         } catch (\Exception $e) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to update lead',
-                    'error' => $e->getMessage()
-                ], 500);
-            }
-            return back()->with('error', 'Failed to update lead: ' . $e->getMessage())->withInput();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update lead',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 

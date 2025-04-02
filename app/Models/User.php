@@ -168,6 +168,30 @@ class User extends Authenticatable
         return $this->hasMany(Task::class);
     }
 
+    /**
+     * Get user's notifications
+     */
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class, 'user_id');
+    }
+
+    /**
+     * Get user's unread notifications count
+     */
+    public function getUnreadNotificationsCountAttribute(): int
+    {
+        return $this->notifications()->whereNull('read_at')->count();
+    }
+
+    /**
+     * Get user's pending follow-ups count
+     */
+    public function getPendingFollowUpsCountAttribute(): int
+    {
+        return Lead::getPendingFollowUpsCount($this);
+    }
+
     public function hasRole($role): bool
     {
         return $this->role && $this->role->slug === $role;

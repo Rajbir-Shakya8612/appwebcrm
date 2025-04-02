@@ -96,11 +96,11 @@
                         <div class="relative">
                             <button class="flex items-center text-gray-500 hover:text-gray-700 focus:outline-none">
                                 <i class="fas fa-bell text-xl"></i>
-                                {{-- @if($pendingReminders > 0)
+                                @if($pendingReminders > 0)
                                     <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                                         {{ $pendingReminders }}
                                     </span>
-                                @endif --}}
+                                @endif
                             </button>
                         </div>
                         <!-- Profile Dropdown -->

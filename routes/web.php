@@ -19,6 +19,7 @@ use App\Http\Controllers\PlanController;
 use App\Http\Controllers\LocationTrackController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\AdminLocationController;
+use App\Http\Controllers\NotificationController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -83,6 +84,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/location/today-tracks', [LocationTrackController::class, 'getTodayTracks'])->name('location.today');
     Route::get('/location/monthly-timeline', [LocationTrackController::class, 'getMonthlyTimeline'])->name('location.monthly');
     Route::get('/location/stats', [LocationTrackController::class, 'getLocationStats'])->name('location.stats');
+
+    // Notification Routes
+    Route::post('notifications/{notification}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
+    Route::post('notifications/mark-all-as-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
+    Route::delete('notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+    Route::delete('notifications', [NotificationController::class, 'destroyAll'])->name('notifications.destroyAll');
 });
 
 

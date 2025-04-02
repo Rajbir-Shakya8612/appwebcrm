@@ -503,6 +503,82 @@
         </div>
     </div>
 
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Notifications & Reminders</h3>
+            </div>
+            <div class="card-body">
+                <!-- Follow-up Reminders -->
+                <div class="mb-4">
+                    <h5 class="mb-3">Follow-up Reminders</h5>
+                    @php
+                        $pendingFollowUps = \App\Models\Lead::where('user_id', auth()->id())
+                            ->where('follow_up_date', '<=', now()->addDays(7))
+                            ->where('follow_up_date', '>=', now())
+                            ->orderBy('follow_up_date')
+                            ->get();
+                    @endphp
+                    
+                    @if($pendingFollowUps->count() > 0)
+                        <div class="list-group">
+                            @foreach($pendingFollowUps as $lead)
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">{{ $lead->name }}</h6>
+                                            <small class="text-muted">Follow-up: {{ $lead->follow_up_date->format('M d, Y') }}</small>
+                                        </div>
+                                        <a href="{{ route('salesperson.leads.show', $lead) }}" class="btn btn-sm btn-primary">
+                                            View
+                                        </a>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="text-muted">No pending follow-ups</p>
+                    @endif
+                </div>
+
+                <!-- Notifications -->
+                <div>
+                    <h5 class="mb-3">Recent Notifications</h5>
+                    @php
+                        $notifications = auth()->user()->notifications()
+                            ->latest()
+                            ->take(5)
+                            ->get();
+                    @endphp
+                    
+                    @if($notifications->count() > 0)
+                        <div class="list-group">
+                            @foreach($notifications as $notification)
+                                <div class="list-group-item {{ $notification->read_at ? '' : 'list-group-item-primary' }}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">{{ $notification->title }}</h6>
+                                            <small class="text-muted">{{ $notification->message }}</small>
+                                        </div>
+                                        @if(!$notification->read_at)
+                                            <form action="{{ route('notifications.markAsRead', $notification) }}" method="POST" class="d-inline">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                    Mark as Read
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="text-muted">No new notifications</p>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
 
     @push('scripts')
         <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
