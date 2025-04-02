@@ -233,6 +233,19 @@
                 transform: translateX(0);
             }
         }
+
+        .small-box {
+            border-radius: 0.5rem; /* Rounded corners */
+            transition: transform 0.3s; /* Smooth hover effect */
+        }
+
+        .small-box:hover {
+            transform: scale(1.05); /* Slightly enlarge on hover */
+        }
+
+        .inner {
+            text-align: center; /* Center align text */
+        }
     </style>
 
     @stack('styles')
@@ -285,7 +298,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="{{ route('admin.locations') }}"
+                        <a href="{{ route('admin.locations.index') }}"
                             class="nav-link {{ request()->routeIs('admin.locations*') ? 'active' : '' }}">
                             <i class="bi bi-geo-alt"></i> Locations
                         </a>

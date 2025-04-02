@@ -325,21 +325,21 @@ class User extends Authenticatable
             ->get();
     }
 
-    // /**
-    //  * Get the expenses for the user.
-    //  */
+    /**
+     * Get the expenses for the user.
+     */
     // public function expenses(): HasMany
     // {
     //     return $this->hasMany(Expense::class);
     // }
 
-    // /**
-    //  * Get the location records for the user.
-    //  */
-    // public function locations(): HasMany
-    // {
-    //     return $this->hasMany(Location::class);
-    // }
+    /**
+     * Get the location records for the user.
+     */
+    public function locations(): HasMany
+    {
+        return $this->hasMany(Location::class);
+    }
 
   
 }

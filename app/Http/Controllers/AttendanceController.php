@@ -199,7 +199,7 @@ class AttendanceController extends Controller
             $attendance->check_in_location = json_encode([
                 'latitude' => $location['latitude'],
                 'longitude' => $location['longitude'],
-                'address' => $location_address,
+                'accuracy' => $location['accuracy'],
             ]);
         
             if (Attendance::isLate($now)) {
@@ -267,7 +267,7 @@ class AttendanceController extends Controller
             $attendance->check_out_location = json_encode([
                 'latitude' => $location['latitude'] ?? null,
                 'longitude' => $location['longitude'] ?? null,
-                'address' => $location_address
+                'accuracy' => $location['accuracy'],
             ]);
 
                  // Calculate working hours
