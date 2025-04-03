@@ -94,16 +94,11 @@ class LeadController extends Controller
 
             // Send notification to admin
             $admin = User::whereHas('role', function($query) {
-                $query->where('slug', 'admin');
+                $query->where('name', 'admin');
             })->first();
 
             if ($admin) {
-                $message = "New lead created by " . Auth::user()->name . "\n";
-                $message .= "Name: " . $lead->name . "\n";
-                $message .= "Phone: " . $lead->phone . "\n";
-                $message .= "Expected Amount: " . $lead->expected_amount;
-                
-                $this->whatsappService->sendMessage($admin->phone, $message);
+                $this->whatsappService->sendNewLeadNotification($admin, $lead);
             }
 
             // Create initial activity
@@ -112,8 +107,6 @@ class LeadController extends Controller
                 'Lead was added to the system',
                 Auth::user()
             );
-
-            $this->whatsappService->sendNewLeadNotification($admin, $lead);
 
             // Create follow-up notification
             Notification::create([
@@ -196,8 +189,6 @@ class LeadController extends Controller
             // Get the old status before update
             $oldStatusId = $lead->status_id;
 
-         
-
             // Update lead
             $lead->update([
                 'status_id' => $validated['status_id'],
@@ -216,24 +207,21 @@ class LeadController extends Controller
                 'longitude' => $validated['longitude']
             ]);
 
-            // Create initial activity
+            // Create activity for the update
             $lead->createActivity(
-                'Lead Created',
-                'Lead was added to the system',
+                'Lead Updated',
+                'Lead information was updated',
                 Auth::user()
             );
 
-            // If status changed to converted, send notification
-            if ($lead->wasChanged('status_id') && $lead->status->slug === 'converted') {
-                $this->whatsappService->sendLeadConversionNotification($lead->user, $lead);
-            }
             // Reload the lead with status relationship
             $lead->load('status');
 
-            // Check if status changed to converted using status_id
+            // Check if status changed to converted
             $convertedStatusId = LeadStatus::where('slug', 'converted')->value('id');
             
             if ($convertedStatusId && $validated['status_id'] == $convertedStatusId && $oldStatusId != $convertedStatusId) {
+                // Send notification to admin
                 $admin = User::whereHas('role', function($query) {
                     $query->where('slug', 'admin');
                 })->first();
@@ -246,6 +234,9 @@ class LeadController extends Controller
                     
                     $this->whatsappService->sendMessage($admin->phone, $message);
                 }
+
+                // Send notification to salesperson
+                $this->whatsappService->sendLeadConversionNotification($lead->user, $lead);
             }
 
             return response()->json([
