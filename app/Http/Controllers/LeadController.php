@@ -100,6 +100,8 @@ class LeadController extends Controller
             if ($admin) {
                 $this->whatsappService->sendNewLeadNotification($admin, $lead);
             }
+            // Send notification to the user who created the lead
+            $this->whatsappService->sendNewLeadNotification($lead->user, $lead);
 
             // Create initial activity
             $lead->createActivity(
@@ -233,8 +235,11 @@ class LeadController extends Controller
                     $message .= "Amount: " . $lead->expected_amount;
                     
                     $this->whatsappService->sendMessage($admin->phone, $message);
-                }
+                  
+                    $this->whatsappService->sendLeadConversionNotification($admin, $lead);
+                
 
+                }
                 // Send notification to salesperson
                 $this->whatsappService->sendLeadConversionNotification($lead->user, $lead);
             }
@@ -261,7 +266,9 @@ class LeadController extends Controller
     {
         try {
             $this->authorize('delete', $lead);
-            
+
+            // Optionally send a notification before deleting
+            $this->whatsappService->sendMessage($lead->user->whatsapp_number, "Lead '{$lead->name}' has been deleted.");
             $lead->delete();
 
             if (request()->wantsJson()) {

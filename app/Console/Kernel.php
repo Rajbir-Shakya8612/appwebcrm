@@ -28,6 +28,8 @@ class Kernel extends ConsoleKernel
         
         // Check plan deadlines daily
         $schedule->command('plans:check-deadlines')->daily();
+        
+        $schedule->command('app:send-follow-up-reminders')->daily();
     }
 
     /**

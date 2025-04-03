@@ -253,9 +253,28 @@
                                         <a href="mailto:{{ $lead->email }}" class="contact-icon email">
                                             <i class="fas fa-envelope"></i>
                                         </a>
-                                        <a href="https://wa.me/{{ $lead->phone }}" class="contact-icon whatsapp" target="_blank">
-                                            <i class="fab fa-whatsapp"></i>
-                                        </a>
+                                <?php
+$phone = $lead->phone;
+$message = "Hello, I am interested in your services."; // Aap yaha apna message change kar sakte hain
+
+// Ensure phone starts with +91
+if (!preg_match('/^\+91/', $phone)) {
+    $phone = '+91' . ltrim($phone, '+'); // Remove any existing + and add +91
+}
+
+// Encode message for URL
+$encodedMessage = urlencode($message);
+?>
+
+<a href="https://wa.me/<?= $phone ?>?text=<?= $encodedMessage ?>" class="contact-icon whatsapp" target="_blank">
+    <i class="fab fa-whatsapp"></i>
+</a>
+
+
+                                    <a href="https://wa.me/<?= $phone ?>" class="contact-icon whatsapp" target="_blank">
+                                        <i class="fab fa-whatsapp"></i>
+                                    </a>
+
                                         <div class="ms-auto">
                                             <i class="fas fa-edit edit-icon" onclick="editLead({{ $lead->id }})"></i>
                                             <i class="fas fa-trash delete-icon" onclick="deleteLead({{ $lead->id }})"></i>

@@ -44,7 +44,13 @@ return [
 
     'whatsapp' => [
         'api_key' => env('WHATSAPP_API_KEY'),
-        'api_url' => env('WHATSAPP_API_URL', 'https://graph.facebook.com/v17.0'),
+        'api_url' => env('WHATSAPP_API_URL', 'https://graph.facebook.com/v17.0/+918607807612/message'),
+    ],
+
+    'twilio' => [
+        'sid' => env('TWILIO_SID'),
+        'auth_token' => env('TWILIO_AUTH_TOKEN'),
+        'whatsapp_from' => env('TWILIO_WHATSAPP_FROM'),
     ],
 
     'google' => [
