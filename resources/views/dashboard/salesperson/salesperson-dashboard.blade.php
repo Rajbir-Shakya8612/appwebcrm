@@ -191,7 +191,7 @@
                         <div class="kanban-column-header d-flex align-items-center justify-content-between">
                             <div class="d-flex align-items-center">
                                 <h4 class="kanban-column-title me-2">{{ $status->name }}</h4>
-                                <button class="btn-add-lead" onclick="addNewLead({{ $status->id }})">
+                                <button class="btn-add-lead" data-bs-toggle="modal" data-bs-target="#newLeadModal">
                                     <i class="fas fa-plus"></i>
                                 </button>
                             </div>
@@ -258,25 +258,44 @@
                                            
                                             // Ensure phone starts with +91
                                             if (!preg_match('/^\+91/', $phone)) {
-                                                $phone = '+91' . ltrim($phone, '+'); // Remove any existing + and add +91
+                                                $phone = '+91' . ltrim($phone, '+');
                                             }
 
                                            
                                         ?>
 
-                                    <a href="https://wa.me/{{ $phone }}" class="contact-icon whatsapp" target="_blank">
-                                        <i class="fab fa-whatsapp"></i>
-                                    </a>
-
-
                                     <a href="https://wa.me/<?= $phone ?>" class="contact-icon whatsapp" target="_blank">
                                         <i class="fab fa-whatsapp"></i>
                                     </a>
 
-                                        <div class="ms-auto">
-                                            <i class="fas fa-edit edit-icon" onclick="editLead({{ $lead->id }})"></i>
-                                            <i class="fas fa-trash delete-icon" onclick="deleteLead({{ $lead->id }})"></i>
+                                        <div class="d-flex">
+                                            <!-- Eye Icon Button with btn-info background and equal sizing -->
+                                           <button class="btn btn-sm btn-light me-1 d-flex align-items-center justify-content-center" 
+                                                    style="width: 32px; height: 32px;" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#viewLeadModal" 
+                                                    onclick="viewLeadDetails({{ $lead->id }})">
+                                                <i class="fas fa-eye text-info"></i>
+                                            </button>
+
+
+                                            <!-- Edit Icon -->
+                                            <button class="btn btn-sm btn-light me-1 d-flex align-items-center justify-content-center" 
+                                                    style="width: 32px; height: 32px;" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#editLeadModal" 
+                                                    onclick="editLeadDetails({{ $lead->id }})">
+                                                <i class="fas fa-edit text-primary"></i>
+                                            </button>
+
+                                            <!-- Delete Icon -->
+                                            <button class="btn btn-sm btn-light d-flex align-items-center justify-content-center" 
+                                                    style="width: 32px; height: 32px;" 
+                                                    onclick="deleteLeadConfirm({{ $lead->id }})">
+                                                <i class="fas fa-trash text-danger"></i>
+                                            </button>
                                         </div>
+
                                     </div>
                                 </div>
                             @endforeach
@@ -286,131 +305,8 @@
             </div>
         </div>
 
-        <!-- Lead Modal -->
-        <div class="modal fade" id="leadModal" tabindex="-1" aria-labelledby="leadModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg"> <!-- Increased modal width -->
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="leadModalLabel">Add New Lead</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="addLeadForm" class="needs-validation" novalidate>
-                            @csrf
-                            <input type="hidden" name="lead_id" id="lead_id">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="name" class=" form-label text-start d-block">Name</label>
-                                    <input type="text" name="name" id="name" class="form-control" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="phone" class=" form-label text-start d-block">Phone</label>
-                                    <input type="tel" name="phone" id="phone" class="form-control" required>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="email" class=" form-label text-start d-block">Email</label>
-                                    <input type="email" name="email" id="email" class="form-control" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="company" class=" form-label text-start d-block">Company</label>
-                                    <input type="text" name="company" id="company" class="form-control" required>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="source" class=" form-label text-start d-block">Source</label>
-                                    <select name="source" id="source" class="form-select" required>
-                                        <option value="">Select Source</option>
-                                        <option value="website">Website</option>
-                                        <option value="referral">Referral</option>
-                                        <option value="social">Social Media</option>
-                                        <option value="other">Other</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="status" class=" form-label text-start d-block">Status</label>
-                                    <select name="status_id" id="status" class="form-select" required>
-                                        <option value="">Select Status</option>
-                                        @foreach ($leadStatuses as $status)
-                                            <option value="{{ $status->id }}">{{ $status->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="description" class=" form-label text-start d-block">Description</label>
-                                <textarea name="description" id="description" class="form-control" rows="3" required></textarea>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="expected_amount" class=" form-label text-start d-block">Expected
-                                        Amount</label>
-                                    <input type="number" name="expected_amount" id="expected_amount"
-                                        class="form-control" min="0" step="0.01" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="notes" class=" form-label text-start d-block">Notes</label>
-                                    <textarea name="notes" id="notes" class="form-control" rows="2"></textarea>
-                                </div>
-                            </div>
-
-                            <div class="text-end">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                <button type="submit" class="btn btn-primary">Save Lead</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-
-        <!-- Task Modal -->
-        <div class="modal fade" id="taskModal" tabindex="-1" aria-labelledby="taskModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="taskModalLabel">Add New Task</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="addTaskForm" class="space-y-4">
-                            @csrf
-                            <div class="mb-3">
-                                <label for="taskTitle" class=" form-label text-start d-block">Title</label>
-                                <input type="text" name="title" id="taskTitle" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="taskDescription" class=" form-label text-start d-block">Description</label>
-                                <textarea name="description" id="taskDescription" class="form-control" rows="3"></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label for="dueDate" class=" form-label text-start d-block">Due Date</label>
-                                <input type="date" name="due_date" id="dueDate" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="priority" class=" form-label text-start d-block">Priority</label>
-                                <select name="priority" id="priority" class="form-select" required>
-                                    <option value="low">Low</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="high">High</option>
-                                </select>
-                            </div>
-                            <div class="text-end">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                <button type="submit" class="btn btn-success">Add Task</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
+            @include('components.salesperson.lead-form')
+        
 
 
         <!-- Calendar Navigation -->
@@ -630,7 +526,7 @@
             }
 
             // Get and update location immediately
-            function getCurrentLocation(callback) {
+            function attandancegetCurrentLocation(callback) {
                 if ("geolocation" in navigator) {
                     navigator.geolocation.getCurrentPosition(
                         function(position) {
@@ -687,7 +583,7 @@
                 checkInBtn.disabled = true;
                 checkInBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Checking in...';
 
-                getCurrentLocation((latitude, longitude, accuracy) => {
+                attandancegetCurrentLocation((latitude, longitude, accuracy) => {
                     sendCheckInData(latitude, longitude, accuracy);
                 });
             }
@@ -737,7 +633,7 @@
                 checkOutBtn.disabled = true;
                 checkOutBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Checking out...';
 
-                getCurrentLocation((latitude, longitude, accuracy) => {
+                attandancegetCurrentLocation((latitude, longitude, accuracy) => {
                     sendCheckOutData(latitude, longitude, accuracy);
                 });
             }
@@ -847,275 +743,7 @@
                 startLocationTracking();
             });
 
-            function openModal(modalId) {
-                const modal = new bootstrap.Modal(document.getElementById(modalId));
-                modal.show();
-            }
-
-            // lead open management
-            function openLeadModal(leadId = null) {
-                const modal = document.getElementById('leadModal');
-                const form = document.getElementById('addLeadForm');
-                const modalTitle = document.getElementById('leadModalLabel');
-                const leadIdField = document.getElementById('lead_id');
-
-                if (leadId) {
-                    // Edit mode
-                    modalTitle.textContent = 'Edit Lead';
-                    fetch(`/salesperson/leads/${leadId}`)
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Network response was not ok: ' + response.statusText);
-                            }
-                            return response.json();
-                        })
-                        .then(lead => {
-                            form.name.value = lead.name;
-                            form.phone.value = lead.phone;
-                            form.email.value = lead.email;
-                            form.company.value = lead.company;
-                            form.description.value = lead.additional_info;
-                            form.source.value = lead.source;
-                            form.expected_amount.value = lead.expected_amount;
-                            form.notes.value = lead.notes;
-                            form.status.value = lead.status_id;
-
-                            form.dataset.leadId = leadId;
-                            leadIdField.value = leadId;
-                        })
-                        .catch(error => {
-                            console.error('Error fetching lead:', error);
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error!',
-                                text: 'Failed to load lead data. Please try again.'
-                            });
-                        });
-                } else {
-                    // Create mode
-                    modalTitle.textContent = 'Add New Lead';
-                    form.reset(); // Reset the form for new lead
-                    delete form.dataset.leadId; // Ensure the lead ID is removed
-                }
-
-                new bootstrap.Modal(modal).show();
-            }
-            
-            // Lead Form Submission
-            document.getElementById('addLeadForm').addEventListener('submit', function(event) {
-                event.preventDefault();
-
-                const form = this;
-                const leadId = document.getElementById('lead_id').value;
-                const url = '/salesperson/leads';
-                const method = 'POST';
-
-                const formData = new FormData(form);
-
-                fetch(url, {
-                        method: method,
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
-                        body: JSON.stringify(Object.fromEntries(formData.entries()))
-                    })
-                    .then(response => response.json())
-                    .then(result => {
-                        if (result.success) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Success!',
-                                text: result.message,
-                                timer: 1500,
-                                showConfirmButton: false
-                            });
-                            location.reload();
-                        } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error!',
-                                text: result.message || 'Failed to save lead'
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error!',
-                            text: 'Failed to save lead. Please try again.'
-                        });
-                    });
-            });
-
-            function editLead(leadId) {
-                $.get(`/salesperson/leads/${leadId}`, function(lead) {
-                    Swal.fire({
-                        width: '700px',
-                        title: 'Edit Lead',
-                        customClass: {
-                            popup: 'swal-wide'
-                        },
-                        html: `
-                        <form id="editLeadForm" class="space-y-4">
-                            <input type="hidden" name="lead_id" id="lead_id" value="${lead.id}">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="name" class=" form-label text-start d-block">Name</label>
-                                    <input type="text" name="name" id="name" value="${lead.name}" class="form-control" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="phone" class=" form-label text-start d-block">Phone</label>
-                                    <input type="tel" name="phone" id="phone" value="${lead.phone}" class="form-control" required>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="email" class=" form-label text-start d-block">Email</label>
-                                    <input type="email" name="email" id="email" value="${lead.email}" class="form-control" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="company" class=" form-label text-start d-block">Company</label>
-                                    <input type="text" name="company" id="company" value="${lead.company}" class="form-control" required>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="source" class=" form-label text-start d-block">Source</label>
-                                    <select name="source" id="source" class="form-select" required>
-                                        <option value="website" ${lead.source === 'website' ? 'selected' : ''}>Website</option>
-                                        <option value="referral" ${lead.source === 'referral' ? 'selected' : ''}>Referral</option>
-                                        <option value="social" ${lead.source === 'social' ? 'selected' : ''}>Social Media</option>
-                                        <option value="other" ${lead.source === 'other' ? 'selected' : ''}>Other</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="status_id" class=" form-label text-start d-block">Status</label>
-                                    <select name="status_id" id="status_id" class="form-select" required>
-                                        <option value="">Select Status</option>
-                                        @foreach ($leadStatuses as $status)
-                                            <option value="{{ $status->id }}" ${lead.status_id == {{ $status->id }} ? 'selected' : ''}>
-                                                {{ $status->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="description" class=" form-label text-start d-block">Description</label>
-                                <textarea name="description" id="description" class="form-control" required>${lead.notes || ''}</textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label for="expected_amount" class=" form-label text-start d-block">Expected Amount</label>
-                                <input type="number" name="expected_amount" id="expected_amount" value="${lead.expected_amount}" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="notes" class=" form-label text-start d-block">Notes</label>
-                                <textarea name="notes" id="notes" class="form-control">${lead.notes || ''}</textarea>
-                            </div>
-                        </form>
-                    `,
-                        showCancelButton: true,
-                        confirmButtonText: 'Update Lead',
-                        cancelButtonText: 'Cancel',
-                        preConfirm: () => {
-                            const form = document.getElementById('editLeadForm');
-                            const formData = new FormData(form);
-                            const data = Object.fromEntries(formData.entries());
-
-                            return $.ajax({
-                                url: `/salesperson/leads/${leadId}`,
-                                method: 'PUT',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': document.querySelector(
-                                        'meta[name="csrf-token"]').content
-                                },
-                                data: JSON.stringify(data)
-                            }).then(response => {
-                                if (!response.success) {
-                                    throw new Error(response.message || 'Failed to update lead');
-                                }
-                                return response;
-                            });
-                        }
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Success!',
-                                text: 'Lead updated successfully',
-                                timer: 1500,
-                                showConfirmButton: false
-                            });
-                            // Refresh the page to show the updated lead
-                            window.location.reload();
-                        }
-                    }).catch(error => {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error!',
-                            text: error.message || 'Failed to update lead. Please try again.'
-                        });
-                    });
-                }).fail(function() {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error!',
-                        text: 'Failed to load lead data. Please try again.'
-                    });
-                });
-            }
-         
-            function deleteLead(leadId) {
-                Swal.fire({
-                    title: 'Are you sure?',
-                    text: "You won't be able to revert this!",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#3085d6',
-                    cancelButtonColor: '#d33',
-                    confirmButtonText: 'Yes, delete it!'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        fetch(`/salesperson/leads/${leadId}`, {
-                                method: 'DELETE',
-                                headers: {
-                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                                }
-                            })
-                            .then(response => response.json())
-                            .then(result => {
-                                if (result.success) {
-                                    Swal.fire({
-                                        icon: 'success',
-                                        title: 'Deleted!',
-                                        text: result.message,
-                                        timer: 1500,
-                                        showConfirmButton: false
-                                    });
-                                    location.reload();
-                                } else {
-                                    Swal.fire({
-                                        icon: 'error',
-                                        title: 'Error!',
-                                        text: result.message || 'Failed to delete lead'
-                                    });
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Error:', error);
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Error!',
-                                    text: 'Failed to delete lead. Please try again.'
-                                });
-                            });
-                    }
-                });
-            }
-
+        
             // Task Form Submission
             document.getElementById('addTaskForm').addEventListener('submit', function(event) {
                 event.preventDefault();
@@ -1156,58 +784,6 @@
                         });
                     });
             });
-
-
-            function submitLeadForm(event) {
-                event.preventDefault();
-                const form = event.target;
-                const leadId = form.dataset.leadId;
-                const url = leadId ? `/salesperson/leads/${leadId}` : '/salesperson/leads';
-                const method = leadId ? 'PUT' : 'POST';
-
-                const formData = new FormData(form);
-                const data = Object.fromEntries(formData.entries());
-
-                // Add CSRF token
-                data._token = '{{ csrf_token() }}';
-
-                fetch(url, {
-                        method: method,
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
-                        body: JSON.stringify(data)
-                    })
-                    .then(response => response.json())
-                    .then(result => {
-                        if (result.success) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Success!',
-                                text: result.message,
-                                timer: 1500,
-                                showConfirmButton: false
-                            });
-                            location.reload();
-                        } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error!',
-                                text: result.message || 'Failed to save lead'
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error!',
-                            text: 'Failed to save lead. Please try again.'
-                        });
-                    });
-
-            }
 
             // Event Modal
             function handleEventClick(info) {
