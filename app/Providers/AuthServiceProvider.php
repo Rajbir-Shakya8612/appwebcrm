@@ -2,12 +2,14 @@
 
 namespace App\Providers;
 
-use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
-use Illuminate\Support\Facades\Gate;
-use App\Models\Meeting;
 use App\Models\Plan;
-use App\Policies\MeetingPolicy;
+use App\Models\Task;
+use App\Models\Meeting;
 use App\Policies\PlanPolicy;
+use App\Policies\TaskPolicy;
+use App\Policies\MeetingPolicy;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -19,6 +21,7 @@ class AuthServiceProvider extends ServiceProvider
     protected $policies = [
         Meeting::class => MeetingPolicy::class,
         Plan::class => PlanPolicy::class,
+        Task::class => TaskPolicy::class,
     ];
 
     /**

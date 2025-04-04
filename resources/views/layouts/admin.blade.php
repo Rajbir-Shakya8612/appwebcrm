@@ -251,6 +251,17 @@
         .inner {
             text-align: center; /* Center align text */
         }
+        .table-responsive {
+            overflow: visible !important;
+            position: relative;
+        }
+
+        .table .dropdown-menu {
+            z-index: 1050; /* ya z-index: 9999 bhi chal jaayega */
+            position: absolute !important;
+            transform: translate3d(0px, 0px, 0px) !important;
+        }
+
     </style>
 
     @stack('styles')
@@ -411,9 +422,8 @@
 
     <!-- Axios -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-        <!-- Before closing body tag -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
     <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
 
     <!-- Custom JS -->

@@ -16,6 +16,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+        <!-- Axios -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
     <link rel="stylesheet" href="{{ asset('css/salesperson.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kanban.css') }}">
@@ -60,6 +62,11 @@
                         <i class="fas fa-tasks"></i>
                         <span>Plans</span>
                     </a>
+                    <a href="{{ route('salesperson.tasks.index') }}"
+                        class="sidebar-link {{ Request::routeIs('salesperson.tasks.index') ? 'active' : '' }}">
+                        <i class="fas fa-clipboard-list"></i>
+                        <span>Tasks</span>
+                    </a>
                     <a href="{{ route('salesperson.performance') }}"
                         class="sidebar-link {{ Request::routeIs('salesperson.performance') ? 'active' : '' }}">
                         <i class="fas fa-chart-bar"></i>
@@ -97,11 +104,33 @@
                             @yield('title', 'Dashboard')
                         </h2>
                         <div class="d-flex align-items-center">
+                            @php
+                                use Illuminate\Support\Facades\Auth;
+
+                                $pendingReminders = 0;
+
+                                if (Auth::check()) {
+                                    $user = Auth::user();
+                                    $now = now();
+
+                                    $pendingReminders = $user->meetings()
+                                        ->where('status', 'pending')
+                                        ->where('reminder_date', '<=', $now)
+                                        ->where('meeting_date', '>', $now)
+                                        ->count();
+                                }
+                            @endphp
+
                             <!-- Notifications -->
                             <div class="position-relative me-3">
-                                <button class="btn text-dark">
-                                    <i class="fas fa-bell fa-lg"></i>
-                                </button>
+                                <button class="flex items-center text-gray-500 hover:text-gray-700 focus:outline-none">
+                                <i class="fas fa-bell text-xl"></i>
+                                @if($pendingReminders > 0)
+                                    <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                                        {{ $pendingReminders }}
+                                    </span>
+                                @endif
+                            </button>
                             </div>
                             <!-- Profile Dropdown -->
                             <div class="dropdown">

@@ -19,10 +19,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Tasks Management
     Route::get('/tasks', [AdminDashboardController::class, 'tasks'])->name('tasks');
     Route::post('/tasks', [AdminDashboardController::class, 'createTask'])->name('tasks.create');
+    Route::get('/tasks/{task}/edit', [AdminDashboardController::class, 'editTask'])->name('tasks.edit');
     Route::get('/tasks/{task}', [AdminDashboardController::class, 'showTask'])->name('tasks.show');
     Route::put('/tasks/{task}', [AdminDashboardController::class, 'updateTask'])->name('tasks.update');
     Route::delete('/tasks/{task}', [AdminDashboardController::class, 'deleteTask'])->name('tasks.delete');
     Route::put('/tasks/{task}/status', [AdminDashboardController::class, 'updateTaskStatus'])->name('tasks.status');
+
 
     // Attendance Management
     Route::get('/attendance', [AdminDashboardController::class, 'attendance'])->name('attendance');

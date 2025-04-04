@@ -37,7 +37,7 @@
                                 </a>
                             </li>
                             <li>
-                                <a href="{{ route('ssalesperson.leads.index') }}" class="flex bg-white hover:bg-blue-100 rounded-xl font-bold text-sm text-gray-900 py-3 px-4">
+                                <a href="{{ route('salesperson.leads.index') }}" class="flex bg-white hover:bg-blue-100 rounded-xl font-bold text-sm text-gray-900 py-3 px-4">
                                     <i class="fas fa-users mr-3"></i> Leads
                                 </a>
                             </li>
@@ -54,6 +54,11 @@
                             <li>
                                 <a href="{{ route('salesperson.plans') }}" class="flex bg-white hover:bg-blue-100 rounded-xl font-bold text-sm text-gray-900 py-3 px-4">
                                     <i class="fas fa-tasks mr-3"></i> Plans
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{{ route('salesperson.tasks.index') }}" class="flex bg-white hover:bg-blue-100 rounded-xl font-bold text-sm text-gray-900 py-3 px-4">
+                                    <i class="fas fa-tasks mr-3"></i> Tasks
                                 </a>
                             </li>
                             <li>

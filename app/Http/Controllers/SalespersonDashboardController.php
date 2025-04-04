@@ -189,6 +189,12 @@ class SalespersonDashboardController extends Controller
         // Recent activities
         $recentActivities = $this->getRecentActivities($user);
 
+        $pendingReminders = $user->meetings()
+            ->where('status', 'pending')
+            ->where('reminder_date', '<=', $now)
+            ->where('meeting_date', '>', $now)
+            ->count();
+
         return view('dashboard.salesperson.salesperson-dashboard', compact(
             'totalLeads',
             'monthlySales',
@@ -200,7 +206,8 @@ class SalespersonDashboardController extends Controller
             'tasks',
             'performanceData',
             'recentActivities',
-            'events'
+            'events',
+            'pendingReminders'
         ));
     }
 
@@ -318,5 +325,90 @@ class SalespersonDashboardController extends Controller
         $activities = $activities->concat($attendance);
 
         return $activities->sortByDesc('created_at')->take(10)->values();
+    }
+
+    /**
+     * Get tasks for the salesperson dashboard
+     */
+    public function tasks(Request $request)
+    {
+        $user = Auth::user();
+        
+        $query = Task::where('assignee_id', $user->id)
+            ->when($request->status, function ($query, $status) {
+                $query->where('status', $status);
+            })
+            ->when($request->type, function ($query, $type) {
+                $query->where('type', $type);
+            })
+            ->when($request->search, function ($query, $search) {
+                $query->where('title', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            })
+            ->latest();
+
+        $tasks = $query->paginate(10);
+
+        if ($request->wantsJson()) {
+            return response()->json($tasks);
+        }
+
+        return view('dashboard.salesperson.tasks.index', compact('tasks'));
+    }
+
+    public function createTask()
+    {
+        return view('dashboard.salesperson.tasks.create');
+    }
+    public function storeTask(Request $request)
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'type' => 'required|in:lead,sale,meeting',
+            'status' => 'required|in:pending,in_progress,completed',
+            'priority' => 'nullable|string',
+            'due_date' => 'required|date',
+        ]);
+
+        // Automatically assign to currently logged-in user
+        $validated['assignee_id'] = auth()->id();
+
+        Task::create($validated);
+
+        return redirect()->route('salesperson.tasks.index')->with('success', 'Task created successfully!');
+    }
+
+    /**
+     * Show a single task
+     */
+    public function showTask(Task $task)
+    {
+        $this->authorize('view', $task);
+        $task->load('assignee');
+        return view('dashboard.salesperson.tasks.show', compact('task'));
+    }
+
+    /**
+     * Update task status
+     */
+    public function updateTaskStatus(Request $request, Task $task)
+    {
+        $this->authorize('update', $task);
+        
+        $validated = $request->validate([
+            'status' => ['required', 'string', 'in:pending,in_progress,completed'],
+        ]);
+
+        $task->update($validated);
+
+        if ($validated['status'] === 'completed') {
+            $task->update(['completed_at' => now()]);
+        }
+
+        return response()->json([
+            'message' => 'Task status updated successfully',
+            'task' => $task
+        ]);
     }
 }

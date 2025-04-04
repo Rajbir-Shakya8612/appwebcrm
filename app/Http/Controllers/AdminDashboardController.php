@@ -67,7 +67,7 @@ class AdminDashboardController extends Controller
          : 0;
 
       // Task Board
-      $todoTasks = Task::where('status', 'todo')
+      $todoTasks = Task::where('status', 'pending')
          ->with('assignee')
          ->orderBy('due_date')
          ->get();
@@ -77,7 +77,7 @@ class AdminDashboardController extends Controller
          ->orderBy('due_date')
          ->get();
 
-      $doneTasks = Task::where('status', 'done')
+      $doneTasks = Task::where('status', 'completed')
          ->with('assignee')
          ->orderBy('created_at', 'desc')
          ->limit(5)
@@ -441,108 +441,142 @@ class AdminDashboardController extends Controller
     */
    public function tasks(Request $request)
    {
-      $tasks = Task::with('assignee')
+      $query = Task::with('assignee')
          ->when($request->status, function ($query, $status) {
             $query->where('status', $status);
+         })
+         ->when($request->type, function ($query, $type) {
+            $query->where('type', $type);
+         })
+         ->when($request->assignee, function ($query, $assignee) {
+            $query->where('assignee_id', $assignee);
          })
          ->when($request->search, function ($query, $search) {
             $query->where('title', 'like', "%{$search}%")
                ->orWhere('description', 'like', "%{$search}%");
          })
-         ->latest()
-         ->paginate(10);
+         ->latest();
+
+      $tasks = $query->paginate(10);
+      $salespersons = User::where('role_id', Role::where('slug', 'salesperson')->first()->id)->get();
 
       if ($request->wantsJson()) {
          return response()->json($tasks);
       }
 
-      return view('admin.tasks.index', compact('tasks'));
+      return view('admin.tasks.index', compact('tasks', 'salespersons'));
    }
 
+   /**
+    * Show the task edit form
+    */
+   public function editTask(Task $task)
+   {
+       $salespersons = User::where('role_id', Role::where('slug', 'salesperson')->first()->id)->get();
+       return view('admin.tasks.edit', compact('task', 'salespersons'));
+   }
+
+   /**
+    * Show a single task
+    */
+   public function showTask(Task $task)
+   {
+       $task->load('assignee');
+       return view('admin.tasks.show', compact('task'));
+   }
+
+   /**
+    * Create a new task
+    */
    public function createTask(Request $request)
    {
-      $validated = $request->validate([
-         'title' => ['required', 'string', 'max:255'],
-         'description' => ['required', 'string'],
-         'type' => ['required', 'string', 'in:lead,sale,meeting'],
-         'assignee_id' => ['required', 'exists:users,id'],
-         'due_date' => ['required', 'date', 'after:today'],
-      ]);
+       $validated = $request->validate([
+           'title' => ['required', 'string', 'max:255'],
+           'description' => ['required', 'string'],
+           'type' => ['required', 'string', 'in:lead,sale,meeting'],
+           'assignee_id' => ['required', 'exists:users,id'],
+           'due_date' => ['required', 'date', 'after:today'],
+       ]);
 
-      $task = Task::create($validated);
+       $task = Task::create($validated);
 
-      if ($request->wantsJson()) {
-         return response()->json([
-            'message' => 'Task created successfully',
-            'task' => $task
-         ], 201);
-      }
+       if ($request->wantsJson()) {
+           return response()->json([
+               'message' => 'Task created successfully',
+               'task' => $task
+           ], 201);
+       }
 
-      return redirect()->route('admin.tasks.index')->with('success', 'Task created successfully');
+       return redirect()->back()->with('success', 'Task created successfully');
    }
 
-   public function showTask(Request $request, Task $task)
-   {
-      $task->load('assignee');
-
-      if ($request->wantsJson()) {
-         return response()->json($task);
-      }
-
-      return view('admin.tasks.show', compact('task'));
-   }
-
+   /**
+    * Update a task
+    */
    public function updateTask(Request $request, Task $task)
    {
-      $validated = $request->validate([
-         'title' => ['required', 'string', 'max:255'],
-         'description' => ['required', 'string'],
-         'type' => ['required', 'string', 'in:lead,sale,meeting'],
-         'assignee_id' => ['required', 'exists:users,id'],
-         'due_date' => ['required', 'date', 'after:today'],
+
+       $validated = $request->validate([
+           'title' => ['required', 'string', 'max:255'],
+           'description' => ['required', 'string'],
+           'type' => ['required', 'string', 'in:lead,sale,meeting'],
+           'assignee_id' => ['required', 'exists:users,id'],
+           'due_date' => ['required', 'date', 'after_or_equal:today'],
+            'status' => ['required', 'string', 'in:pending,in_progress,completed'],
+
       ]);
 
-      $task->update($validated);
+       $task->update($validated);
 
-      if ($request->wantsJson()) {
-         return response()->json([
-            'message' => 'Task updated successfully',
-            'task' => $task
-         ]);
-      }
+       if ($validated['status'] === 'done') {
+           $task->update(['completed_at' => now()]);
+       }
 
-      return redirect()->route('admin.tasks.index')->with('success', 'Task updated successfully');
+       if ($request->wantsJson()) {
+           return response()->json([
+               'message' => 'Task updated successfully',
+               'task' => $task
+           ]);
+       }
+
+       return redirect()->back()->with('success', 'Task updated successfully');
    }
 
+   /**
+    * Delete a task
+    */
    public function deleteTask(Request $request, Task $task)
    {
-      $task->delete();
+       $task->delete();
 
-      if ($request->wantsJson()) {
-         return response()->json([
-            'message' => 'Task deleted successfully'
-         ]);
-      }
+       if ($request->wantsJson()) {
+           return response()->json([
+               'message' => 'Task deleted successfully'
+           ]);
+       }
 
-      return redirect()->route('admin.tasks.index')->with('success', 'Task deleted successfully');
+       return redirect()->back()->with('success', 'Task deleted successfully');
    }
 
+   /**
+    * Update task status
+    */
    public function updateTaskStatus(Request $request, Task $task)
    {
-      $validated = $request->validate([
-         'status' => ['required', 'string', 'in:todo,in_progress,done'],
-      ]);
+       $validated = $request->validate([
+            'status' => ['required', 'string', 'in:pending,in_progress,completed'],
+       ]);
 
-      $task->update($validated);
+       $task->update($validated);
 
-      if ($validated['status'] === 'done') {
-         $task->update(['completed_at' => now()]);
-      }
+       if ($validated['status'] === 'done') {
+           $task->update(['completed_at' => now()]);
+       }
 
-      return response()->json([
-         'message' => 'Task status updated successfully',
-         'task' => $task
-      ]);
+       return response()->json([
+           'message' => 'Task status updated successfully',
+           'task' => $task
+       ]);
    }
 
    /**
