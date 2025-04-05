@@ -121,52 +121,55 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Handle lead form submission
-    document.getElementById('addLeadForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const formData = new FormData(this);
-        
-        fetch('/salesperson/leads', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            },
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Add the new card to the appropriate column
-                const column = document.querySelector(`[data-status-id="${data.lead.status_id}"] .kanban-cards`);
-                const newCard = createLeadCard(data.lead);
-                column.appendChild(newCard);
-                
-                // Update column count
-                const countEl = column.parentElement.querySelector('.column-lead-count');
-                let count = parseInt(countEl.textContent);
-                countEl.textContent = count + 1;
-                
-                // Close modal and show success message
-                bootstrap.Modal.getInstance(document.getElementById('leadModal')).hide();
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success!',
-                    text: data.message,
-                    timer: 1500,
-                    showConfirmButton: false
-                });
-            } else {
-                throw new Error(data.message || 'Failed to add lead');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error!',
-                text: error.message || 'Failed to add lead'
+    document.addEventListener('DOMContentLoaded', function () {
+        const addLeadForm = document.getElementById('addLeadForm');
+        if (addLeadForm) {
+            addLeadForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+
+                fetch('/salesperson/leads', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: formData
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const column = document.querySelector(`[data-status-id="${data.lead.status_id}"] .kanban-cards`);
+                            const newCard = createLeadCard(data.lead);
+                            column.appendChild(newCard);
+
+                            const countEl = column.parentElement.querySelector('.column-lead-count');
+                            let count = parseInt(countEl.textContent);
+                            countEl.textContent = count + 1;
+
+                            bootstrap.Modal.getInstance(document.getElementById('leadModal')).hide();
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: data.message,
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            throw new Error(data.message || 'Failed to add lead');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error!',
+                            text: error.message || 'Failed to add lead'
+                        });
+                    });
             });
-        });
+        }
     });
+
 
     // Function to create a new lead card
     function createLeadCard(lead) {

@@ -745,45 +745,52 @@
 
         
             // Task Form Submission
-            document.getElementById('addTaskForm').addEventListener('submit', function(event) {
-                event.preventDefault();
-                const formData = new FormData(this);
+            document.addEventListener('DOMContentLoaded', function () {
+                const form = document.getElementById('addTaskForm');
+                if (form) {
+                    form.addEventListener('submit', function (event) {
+                        event.preventDefault();
+                        const formData = new FormData(this);
 
-                fetch('/salesperson/tasks', {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        },
-                        body: formData
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Success!',
-                                text: data.message,
-                                timer: 1500,
-                                showConfirmButton: false
+                        fetch('/salesperson/tasks', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: formData
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Success!',
+                                        text: data.message,
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    });
+                                    location.reload();
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error!',
+                                        text: data.message || 'Failed to add task'
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error!',
+                                    text: 'Failed to add task. Please try again.'
+                                });
                             });
-                            location.reload();
-                        } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error!',
-                                text: data.message || 'Failed to add task'
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error!',
-                            text: 'Failed to add task. Please try again.'
-                        });
                     });
+                }
             });
+
+
 
             // Event Modal
             function handleEventClick(info) {

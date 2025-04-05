@@ -261,7 +261,7 @@ function updateUser() {
     const formData = new FormData(form);
     const id = formData.get('id');
     
-    fetch(`{{ route("admin.users.update", "") }}/${id}`, {
+    fetch(`{{ url('admin/users') }}/${id}`, {
         method: 'PUT',
         body: formData,
         headers: {
@@ -306,7 +306,7 @@ function deleteUser(id) {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch(`{{ route("admin.users.destroy", "") }}/${id}`, {
+            fetch(`/admin/users/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
@@ -340,5 +340,6 @@ function deleteUser(id) {
         }
     });
 }
+
 </script>
 @endpush 

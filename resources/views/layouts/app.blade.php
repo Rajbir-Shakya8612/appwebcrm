@@ -186,6 +186,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <script src="{{ asset('js/app.js') }}"></script>
     <script src="{{ asset('js/salespersoncalendar.js') }}"></script>
     <script src="{{ asset('js/dashboard.js') }}"></script>
     @stack('scripts')
